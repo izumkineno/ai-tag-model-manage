@@ -13,6 +13,10 @@
 <script setup>
 import model from '@/components/m-model.vue'
 import tools from '@/components/m-tools.vue'
+import { onMounted } from 'vue'
+onMounted(() => {
+  document.title = '炼丹炉'
+})
 </script>
 
 <style lang="less">

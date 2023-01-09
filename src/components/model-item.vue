@@ -25,8 +25,7 @@
           <el-icon
             @click.stop="showInputTag(item)"
             v-show="props.sw.edit.active && !props.item.editing"
-            size="small"
-            style="color: white">
+            size="small">
             <Edit />
           </el-icon>
           <el-input
@@ -38,6 +37,27 @@
             @click.stop
           />
           <span v-else >{{ props.item.name }}</span>
+          <el-input-number
+            v-if="!props.sw.weightNu.active"
+            v-show="props.sw.weight.active"
+            v-model="item.weight"
+            @change="item.weightNu=0"
+            :step="1"
+            :precision="0"
+            :style="StyleInput"
+            size="small"
+            @click.stop/>
+          <el-input-number
+            v-else
+            v-show="props.sw.weight.active"
+            v-model="item.weightNu"
+            @change="item.weight=0"
+            :min="0"
+            :step="0.1"
+            :precision="2"
+            :style="StyleInput"
+            size="small"
+            @click.stop/>
         </el-check-tag>
       </el-space>
     </template>
@@ -66,6 +86,27 @@
               @blur="InputEditing(scope.row)"
               @click.stop/>
             <span v-else >{{ scope.row.name }}</span>
+            <el-input-number
+              v-if="!props.sw.weightNu.active"
+              v-show="props.sw.weight.active"
+              v-model="scope.row.weight"
+              @change="scope.row.weightNu=0"
+              :step="1"
+              :precision="0"
+              :style="StyleInput"
+              size="small"
+              @click.stop/>
+            <el-input-number
+              v-else
+              v-show="props.sw.weight.active"
+              v-model="scope.row.weightNu"
+              @change="scope.row.weight=0"
+              :min="0"
+              :step="0.1"
+              :precision="2"
+              :style="StyleInput"
+              size="small"
+              @click.stop/>
             <el-popconfirm
               :title="`确定删除 ${scope.row.name} ？`"
               @confirm="tagGroupDelete(scope.row)"
@@ -88,8 +129,9 @@
             <el-check-tag
               v-for="i in scope.row.tags.values()" :key="i"
               :checked="i.active && scope.row.active && props.item.active"
+              v-show="!scope.row.GroupEdit.inputVisible"
               @change="tagToggle(i)">
-                  <el-tag @close="tagClose(scope.row.tags, i)"  closable>
+              <el-tag @close="tagClose(scope.row.tags, i)"  closable>
                     <el-icon v-show="!i.editing" size="small"  @click.stop="showInputTag(i)">
                       <Edit />
                     </el-icon>
@@ -104,7 +146,28 @@
                   {{ i.name }}
                 </span>
                   </el-tag>
-                </el-check-tag>
+              <el-input-number
+                v-if="!props.sw.weightNu.active"
+                v-show="props.sw.weight.active"
+                v-model="i.weight"
+                @change="i.weightNu=0"
+                :step="1"
+                :precision="0"
+                :style="{width: StyleInput.width}"
+                size="small"
+                @click.stop/>
+              <el-input-number
+                v-else
+                v-show="props.sw.weight.active"
+                v-model="i.weightNu"
+                @change="i.weight=0"
+                :min="0"
+                :step="0.1"
+                :precision="2"
+                :style="{width: StyleInput.width}"
+                size="small"
+                @click.stop/>
+            </el-check-tag>
             <!--     新标签       -->
             <el-input
               v-if="scope.row.newTag.inputVisible"
@@ -116,6 +179,22 @@
             <el-button v-else size="small" @click="showInputNew(scope.row.newTag)">
               + New Tag
             </el-button>
+            <!--     组编辑       -->
+<!--            <el-input-->
+<!--              v-if="scope.row.GroupEdit.inputVisible"-->
+<!--              ref="InputRefNew"-->
+<!--              v-model="scope.row.GroupEdit.inputValue"-->
+<!--              @keyup.enter="InputGroupEditing(scope.row)"-->
+<!--              @blur="InputGroupEditing(scope.row)"-->
+<!--              type="textarea"-->
+<!--              autosize-->
+<!--            />-->
+<!--            <el-button-->
+<!--              @click="showInputGroupEdit(scope.row.GroupEdit)"-->
+<!--              v-show="props.sw.edit.active"-->
+<!--              :icon="Edit"-->
+<!--              size="small"-->
+<!--              circle />-->
           </el-space>
         </template>
       </el-table-column>
@@ -140,6 +219,10 @@ import { Close, Edit } from '@element-plus/icons-vue'
 import { reactive, ref, nextTick, defineProps, defineEmits, toRaw, computed } from 'vue'
 import { ElInput } from 'element-plus'
 // todo: 建立可编辑和删除tag组件
+const StyleInput = {
+  width: '80px',
+  marginLeft: '5px'
+}
 
 // 表格标识符和各种状态
 const props = defineProps<{
@@ -195,7 +278,11 @@ const InputEditing = (v: IBase) => {
   v.name = v.name.trim()
   v.editing = false
 }
-
+// tagGroup 中所有 tag 编辑
+const InputGroupEditing = (v: IBase) => {
+  v.name = v.name.trim()
+  v.editing = false
+}
 // todo 计划合并
 // todo: 修改判断方案
 // todo: 当输入为空时删除标签或取消编辑
@@ -224,13 +311,15 @@ const showInputTag = (v: IBase) => {
 const InputConfirm = (v: ITagGroup) => {
   if (v.newTag.inputValue) {
     const value = v.newTag.inputValue.trim()
-    const n = {
-      key: value,
-      name: value,
-      editing: false,
-      active: true
-    }
-    v.tags.set(value, n)
+    value.split(',').forEach(value1 => {
+      const n = {
+        key: value1,
+        name: value1,
+        editing: false,
+        active: true
+      }
+      v.tags.set(value1.trim(), n)
+    })
   }
   v.newTag.inputVisible = false
   v.newTag.inputValue = ''
@@ -245,6 +334,10 @@ const InputConfirmGroup = (v: IInput) => {
       active: true,
       tags: new Map(),
       newTag: {
+        inputVisible: false,
+        inputValue: ''
+      },
+      GroupEdit: {
         inputVisible: false,
         inputValue: ''
       }

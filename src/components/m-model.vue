@@ -3,9 +3,12 @@
     <template #header>
       <div class="card-header">
         <el-space wrap>
-          <el-switch v-model="sw.del.active" inline-prompt :active-text="sw.del.name" :inactive-text="sw.del.name"/>
-          <el-switch v-model="sw.edit.active" inline-prompt :active-text="sw.edit.name" :inactive-text="sw.edit.name"/>
-          <el-switch v-model="sw.weight.active" inline-prompt :active-text="sw.weight.name" :inactive-text="sw.weight.name"/>
+          <el-switch
+            v-for="i in sw"
+            :key="i.name"
+            v-model="i.active"
+            inline-prompt :active-text="i.name"
+            :inactive-text="i.name"/>
         </el-space>
         <el-space>
           <el-input v-model="input" :placeholder="tips.input" />
@@ -56,6 +59,10 @@ const sw: ISwitch = reactive({
   },
   weight: {
     name: '权重',
+    active: false
+  },
+  weightNu: {
+    name: '数字权重',
     active: false
   }
 })
@@ -137,47 +144,76 @@ let tagsGet: () => void
   // 扫描所有启用的tag
   tagsGet = () => {
     // 大列表
-    Array.from(items.values()).forEach(value => {
-      if (value.active) {
-        // console.log(Array.from(value.tableData.values()))
+    Array.from(items.values()).forEach(v2 => {
+      if (v2.active) {
+        // console.log(Array.from(v2.tableData.values()))
         // tag 组
-        Array.from(value.tagGroups.values()).forEach(value1 => {
-          if (value1.active) {
+        const t2: string[] = []
+        Array.from(v2.tagGroups.values()).forEach(v1 => {
+          if (v1.active) {
             // console.log(v.tags)
             // tag
-            Array.from(value1.tags.values()).forEach(v => {
+            const t1: string[] = []
+            Array.from(v1.tags.values()).forEach(v => {
               if (v.active) {
                 // console.log(v)
-                tagDispose(v)
+                tagDispose(v, t1)
               }
             })
+            tagAll(v1, t2, t1.toString())
           }
         })
+        tagAll(v2, tags, t2.toString())
       }
     })
     // console.log(tags.toString())
     toClipboard(tags.toString())
     ElMessage({
-      message: `复制成功：\n[${tags.toString()}]`,
+      message: `复制成功：\n${tags.toString()}`,
       type: 'success'
     })
     tags.length = 0
   }
+  const add = ['(', ')']
+  const sub = ['{', '}']
   // 扫描后的处理函数
-  const tagDispose = (v: IBase) => {
-    tags.push(v.name)
+  const tagDispose = (v: IBase, t: string[]) => {
+    let name
+    if (typeof v.weight !== 'undefined' && v.weight !== 0) {
+      console.log('::1')
+      const s = v.weight > 0 ? add : sub
+      name = v.name.padStart(v.name.length + Math.abs(v.weight), s[0])
+      name = name.padEnd(v.name.length + Math.abs(v.weight) * 2, s[1])
+    } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0) {
+      console.log('::2')
+      name = `(${v.name}:${v.weightNu})`
+    } else {
+      console.log('::3')
+      name = v.name
+    }
+    t.push(name)
+  }
+  const tagAll = (v: IBase, t: string[], name: string) => {
+    if (typeof v.weight !== 'undefined' && v.weight !== 0) {
+      const s = v.weight > 0 ? add : sub
+      name = name.padStart(name.length + Math.abs(v.weight), s[0])
+      name = name.padEnd(name.length + Math.abs(v.weight) * 2 - 1, s[1])
+    } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0) {
+      name = `(${name}:${v.weightNu})`
+    }
+    t.push(name)
   }
 }
-
+// 存储
 {
   // 保存
   const Save = () => {
     const t: ISaveItem[] = []
-    Array.from(items.values()).forEach(value => {
+    Array.from(items.values()).forEach(v3 => {
       const t1: ISaveTagGroup[] = []
-      Array.from(value.tagGroups.values()).forEach(value1 => {
+      Array.from(v3.tagGroups.values()).forEach(v2 => {
         const t2: ISaveBase[] = []
-        Array.from(value1.tags).forEach(v => {
+        Array.from(v2.tags).forEach(v => {
           const v1 = v[1]
           t2.push({
             key: v1.key,
@@ -188,18 +224,20 @@ let tagsGet: () => void
           })
         })
           t1.push({
-            key: value.key,
-            name: value.name,
-            active: value.active,
-            weight: value.weight,
-            weightNu: value.weightNu,
+            key: v2.key,
+            name: v2.name,
+            active: v2.active,
+            weight: v2.weight,
+            weightNu: v2.weightNu,
             tags: t2
         })
       })
       t.push({
-        key: value.key,
-        name: value.name,
-        active: value.active,
+        key: v3.key,
+        name: v3.name,
+        active: v3.active,
+        weight: v3.weight,
+        weightNu: v3.weightNu,
         tagGroups: t1
       })
     })
@@ -211,32 +249,42 @@ let tagsGet: () => void
     const tags: string | null = window.localStorage.getItem('tags')
     try {
       const tagsJSON = JSON.parse((tags as string))
-      tagsJSON.forEach((value: ISaveItem) => {
+      tagsJSON.forEach((v2: ISaveItem) => {
         const item: IItem = {
-          key: value.key,
-          name: value.name,
+          key: v2.key,
+          name: v2.name,
           editing: false,
-          active: value.active,
+          active: v2.active,
+          weight: v2.weight,
+          weightNu: v2.weightNu,
           tagGroups: new Map()
         }
-        value.tagGroups.forEach((value1: ISaveTagGroup) => {
+        v2.tagGroups.forEach((v1: ISaveTagGroup) => {
           const tagGroup: ITagGroup = {
-            key: value1.key,
-            name: value1.name,
+            key: v1.key,
+            name: v1.name,
             editing: false,
-            active: value1.active,
+            active: v1.active,
+            weight: v1.weight,
+            weightNu: v1.weightNu,
             tags: new Map(),
             newTag: {
               inputVisible: false,
               inputValue: ''
+            },
+            GroupEdit: {
+              inputVisible: false,
+              inputValue: ''
             }
           }
-          value1.tags.forEach((v: ISaveBase) => {
+          v1.tags.forEach((v: ISaveBase) => {
             const tag: IBase = {
               key: v.key,
               name: v.name,
               editing: false,
-              active: v.active
+              active: v.active,
+              weight: v.weight,
+              weightNu: v.weightNu
             }
             tagGroup.tags.set(v.key, tag)
           })

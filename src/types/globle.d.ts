@@ -43,6 +43,7 @@ type TTags = Map<TBaseMapKey, IBase>
 interface ITagGroup extends IBase{
   tags: TTags
   newTag: IInput
+  GroupEdit: IInput
 }
 //  tag组的集合
 type TTagGroups = Map<TBaseMapKey, ITagGroup>
