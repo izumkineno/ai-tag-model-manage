@@ -1,3 +1,3 @@
-# AI绘画tag管理器
+# AI绘画 tag 管理器
 
-![](E:\temp\MarkText\2023-01-09-22-01-42-image.png)
+![](MarkdownResource/sample.png)
