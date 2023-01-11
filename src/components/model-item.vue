@@ -222,7 +222,6 @@
 import { Close, Edit } from '@element-plus/icons-vue'
 import { reactive, ref, nextTick, defineProps, defineEmits, toRaw, computed } from 'vue'
 import { ElInput } from 'element-plus'
-import Draggable from 'vuedraggable'
 
 // todo: 建立可编辑和删除tag组件
 const StyleInput = {
