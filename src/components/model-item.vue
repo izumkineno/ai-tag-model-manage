@@ -21,7 +21,11 @@
           </template>
         </el-popconfirm>
 <!--    表头    -->
-        <el-check-tag :checked="props.item.active" type="primary" @click.stop="itemStateChange">
+        <el-check-tag
+          :style="WeightColor(item)"
+          :checked="props.item.active"
+          type="primary"
+          @click.stop="itemStateChange" >
           <el-icon
             @click.stop="showInputTag(item)"
             v-show="props.sw.edit.active && !props.item.editing"
@@ -29,17 +33,16 @@
             <Edit />
           </el-icon>
           <el-input
-            v-if="props.item.editing"
+            v-show="props.item.editing"
             ref="InputRefItem"
             v-model="item.name"
             @keyup.enter="InputEditing(item)"
             @blur="InputEditing(item)"
             @click.stop
           />
-          <span v-else >{{ props.item.name }}</span>
+          <span v-show="!props.item.editing" >{{ props.item.name }}</span>
           <el-input-number
-            v-if="!props.sw.weightNu.active"
-            v-show="props.sw.weight.active"
+            v-show="props.sw.weight.active && !props.sw.weightNu.active && item.active"
             v-model="item.weight"
             @change="item.weightNu=0"
             :step="1"
@@ -48,8 +51,7 @@
             size="small"
             @click.stop/>
           <el-input-number
-            v-else
-            v-show="props.sw.weight.active"
+            v-show="props.sw.weight.active && props.sw.weightNu.active && item.active"
             v-model="item.weightNu"
             @change="item.weight=0"
             :min="0"
@@ -69,6 +71,7 @@
           <!--    tag 组      -->
           <el-check-tag
             class="tag-group"
+            :style="WeightColor(scope.row, item.active)"
             :checked="scope.row.active && props.item.active"
             @change="tagToggle(scope.row)">
             <el-icon
@@ -87,8 +90,7 @@
               @click.stop/>
             <span v-else >{{ scope.row.name }}</span>
             <el-input-number
-              v-if="!props.sw.weightNu.active"
-              v-show="props.sw.weight.active"
+              v-show="props.sw.weight.active && !props.sw.weightNu.active && scope.row.active && item.active"
               v-model="scope.row.weight"
               @change="scope.row.weightNu=0"
               :step="1"
@@ -97,8 +99,7 @@
               size="small"
               @click.stop/>
             <el-input-number
-              v-else
-              v-show="props.sw.weight.active"
+              v-show="props.sw.weight.active && props.sw.weightNu.active && scope.row.active && item.active"
               v-model="scope.row.weightNu"
               @change="scope.row.weight=0"
               :min="0"
@@ -127,28 +128,33 @@
           <el-space class="tags" wrap>
             <!--     已展示标签       -->
             <el-check-tag
-              v-for="i in scope.row.tags.values()" :key="i"
+              v-for="i in scope.row.tags.values()" :key="i.key"
+              :style="WeightColor(i, scope.row.active, item.active)"
               :checked="i.active && scope.row.active && props.item.active"
               v-show="!scope.row.GroupEdit.inputVisible"
+              :draggable="sw.drag.active"
+              @dragenter="Drag($event,  i, scope.row,)"
+              @dragleave="Drag($event,  i, scope.row,)"
+              @dragstart="Drag($event,  i, scope.row,)"
+              @dragend="Drag($event,  i, scope.row,)"
               @change="tagToggle(i)">
               <el-tag @close="tagClose(scope.row.tags, i)"  closable>
-                    <el-icon v-show="!i.editing" size="small"  @click.stop="showInputTag(i)">
-                      <Edit />
-                    </el-icon>
-                    <el-input
-                      v-if="i.editing"
-                      v-model="i.name"
-                      ref="InputRefTag"
-                      @keyup.enter="InputEditing(i)"
-                      @blur="InputEditing(i)"
-                      @click.stop/>
-                    <span v-show="!i.editing">
+                <el-icon v-show="!i.editing" size="small"  @click.stop="showInputTag(i)">
+                  <Edit />
+                </el-icon>
+                <el-input
+                  v-if="i.editing"
+                  v-model="i.name"
+                  ref="InputRefTag"
+                  @keyup.enter="InputEditing(i)"
+                  @blur="InputEditing(i)"
+                  @click.stop/>
+                <span v-else>
                   {{ i.name }}
                 </span>
-                  </el-tag>
+              </el-tag>
               <el-input-number
-                v-if="!props.sw.weightNu.active"
-                v-show="props.sw.weight.active"
+                v-show="props.sw.weight.active && !props.sw.weightNu.active && i.active && scope.row.active && item.active"
                 v-model="i.weight"
                 @change="i.weightNu=0"
                 :step="1"
@@ -157,8 +163,7 @@
                 size="small"
                 @click.stop/>
               <el-input-number
-                v-else
-                v-show="props.sw.weight.active"
+                v-show="props.sw.weight.active && props.sw.weightNu.active && i.active && scope.row.active && item.active"
                 v-model="i.weightNu"
                 @change="i.weight=0"
                 :min="0"
@@ -181,7 +186,6 @@
             </el-button>
             <!--     组编辑       -->
 <!--            <el-input-->
-<!--              v-if="scope.row.GroupEdit.inputVisible"-->
 <!--              ref="InputRefNew"-->
 <!--              v-model="scope.row.GroupEdit.inputValue"-->
 <!--              @keyup.enter="InputGroupEditing(scope.row)"-->
@@ -218,10 +222,110 @@
 import { Close, Edit } from '@element-plus/icons-vue'
 import { reactive, ref, nextTick, defineProps, defineEmits, toRaw, computed } from 'vue'
 import { ElInput } from 'element-plus'
+import Draggable from 'vuedraggable'
+
 // todo: 建立可编辑和删除tag组件
 const StyleInput = {
   width: '80px',
   marginLeft: '5px'
+}
+// 权重变色
+const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undefined) => {
+  if (typeof vup === 'undefined') vup = true
+  if (typeof vupp === 'undefined') vupp = true
+  let style: IS2S
+  const color = (nu: number, type: 'add' | 'sub') => {
+    const s = {
+      backgroundColor: ''
+    }
+    s.backgroundColor = type === 'add' ? `rgba(0, 255, 0, ${nu})` : `rgba(255, 0, 0, ${nu})`
+    return s
+  }
+  if (typeof v.weight !== 'undefined' && v.weight !== 0 && v.active && vup && vupp) {
+    const max = 7
+    if (v.weight > 0) {
+      style = v.weight <= max
+        ? color(v.weight / max, 'add')
+        : color(1, 'add')
+    } else {
+      style = v.weight >= -max
+        ? color(Math.abs(v.weight) / max, 'sub')
+        : color(1, 'sub')
+    }
+  } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0 && v.active && vup && vupp) {
+    if (v.weightNu > 1) {
+      style = v.weightNu <= 2
+        ? color(v.weightNu - 1, 'add')
+        : color(1, 'add')
+    } else {
+      style = color(1 - v.weightNu, 'sub')
+    }
+  } else {
+    style = {}
+  }
+  return style
+}
+
+let Drag
+{
+  let key: string | undefined
+  let lastKey: string | undefined
+  let lastTag: any
+  Drag = (e: DragEvent, i: IBase, tagGroup: ITagGroup) => {
+    // console.log(e.type, e, i.key)
+    const path = e.path
+    // tag 拖拽
+    const TagGroupDrag = () => {
+      lastTag.style.background = ''
+      console.log(key, lastKey, lastTag)
+      // 转换组的key，用于定位和修改
+      const keys = Array.from(tagGroup.tags.keys())
+      const index = keys.indexOf(key)
+      // 转换组
+      const t = Array.from(tagGroup.tags)
+      const tag = tagGroup.tags.get(key)
+      // 判断当前组中是否有拖拽的tag
+      if (tagGroup.tags.has(lastKey)) {
+        const indexTarget = keys.indexOf(lastKey)
+        console.log(index, indexTarget)
+        t.splice(indexTarget, 0, [tag.key, tag])
+        t.splice(index + 1, 1)
+        console.log(tag, t)
+        tagGroup.tags = new Map<TBaseMapKey, IBase>(t)
+      }
+    }
+    switch (e.type) {
+      case 'dragstart':
+        key = i.key
+        lastKey = undefined
+        break
+      case 'dragenter':
+        if (i.key !== key) {
+          path[path.length - 29].style.background = 'rgba(0,0,0,0.3)'
+        }
+        if (path[path.length - 29] !== lastTag) {
+          lastTag.style.background = ''
+        }
+        break
+      case 'dragleave':
+        lastKey = i.key
+        lastTag = path[path.length - 29]
+        break
+      case 'dragend':
+        TagGroupDrag()
+        break
+    }
+
+    // a.splice(0, 0, ['a', {
+    //   key: 'a',
+    //   name: 'v.name',
+    //   editing: false,
+    //   active: false
+    // }])
+    // console.log(a)
+    // tagGroup.tags = new Map(a)
+    // console.log(new Map(a))
+  }
 }
 
 // 表格标识符和各种状态
@@ -297,7 +401,7 @@ const showInputTag = (v: IBase) => {
   v.editing = true
   nextTick(() => {
     try {
-      // toRaw(InputRefItem.value)?.input.focus()
+      toRaw(InputRefItem.value)?.input.focus()
       InputRefItem.value?.input?.focus()
       InputRefGroup.value?.input?.focus()
       InputRefTag.value?.input?.focus()
@@ -312,13 +416,16 @@ const InputConfirm = (v: ITagGroup) => {
   if (v.newTag.inputValue) {
     const value = v.newTag.inputValue.trim()
     value.split(',').forEach(value1 => {
+      const v1 = value1.trim()
       const n = {
-        key: value1,
-        name: value1,
+        key: v1,
+        name: v1,
         editing: false,
         active: true
       }
-      v.tags.set(value1.trim(), n)
+      if (v1.length > 0) {
+        v.tags.set(v1, n)
+      }
     })
   }
   v.newTag.inputVisible = false
@@ -351,6 +458,85 @@ const InputConfirmGroup = (v: IInput) => {
 </script>
 
 <style lang='less'>
+@on: var(--el-color-primary);
+@off: var(--el-color-info);
+
+.el-collapse {
+  height: calc(100vh
+  - var(--header-heigh)
+  - (var(--body-margin-tb)
+  - var(--title-pd)
+  - var(--body-item-pd))*2
+  - var(--el-card-padding)*8
+  );
+  .el-icon{
+    border-radius: 50%;
+    vertical-align: -0.15em;
+    padding: 3px;
+  }
+  .el-collapse-item__header {
+    height: var(--card-body-item-heigh);
+    //.el-check-tag{
+    //  background: var(--el-color-danger);
+    //  color: white;
+    //}
+    //.el-check-tag.is-checked  {
+    //  background: var(--el-color-primary);
+    //}
+  }
+  .el-collapse-item__content {
+    padding: 0;
+    .add {
+      box-sizing: border-box;
+      padding: 10px 0;
+      display: flex;
+      justify-content: center;
+      font-size: var(--el-font-size-medium);
+      color: var(--el-color-info);
+    }
+    .add:hover {
+      background: var(--el-fill-color-light);
+      cursor: pointer;
+    }
+  }
+}
+
+.el-space.tags{
+  .el-check-tag {
+    box-sizing: border-box;
+    margin: 5px 0;
+    padding: 0;
+    .el-tag {
+      background: transparent;
+      border: none;
+      color: @off;
+      .el-icon.el-tag__close {
+        color: @off;
+      }
+      .el-icon:hover {
+        background: rgba(255, 255, 255, 0.42);
+      }
+    }
+  }
+  .el-check-tag.is-checked {
+    .el-tag {
+      color: @on;
+      .el-icon.el-tag__close {
+        color: @on;
+      }
+    }
+  }
+
+}
+
+.el-check-tag {
+  .el-icon {
+    margin-right: 5px;
+  }
+}
+.dragging {
+  background: aqua !important;
+}
 //.one-animal {
 //  transition: all .1s !important;
 //}
@@ -404,59 +590,4 @@ const InputConfirmGroup = (v: IInput) => {
 //.el-check-tag.is-checked.tag-group  {
 //  border: 1px solid var(--el-color-primary-light-5);
 //}
-
-.el-collapse {
-  height: calc(100vh - var(--header-heigh) - (var(--body-margin-tb) + var(--title-pd) + var(--body-item-pd))*2);
-  .el-icon{
-    border-radius: 50%;
-    vertical-align: -0.15em;
-    padding: 3px;
-  }
-  .el-collapse-item__header {
-    height: var(--card-body-item-heigh);
-    //.el-check-tag{
-    //  background: var(--el-color-danger);
-    //  color: white;
-    //}
-    //.el-check-tag.is-checked  {
-    //  background: var(--el-color-primary);
-    //}
-  }
-  .el-collapse-item__content {
-    padding: 0;
-    .add {
-      box-sizing: border-box;
-      padding: 10px 0;
-      display: flex;
-      justify-content: center;
-      font-size: var(--el-font-size-medium);
-      color: var(--el-color-info);
-    }
-    .add:hover {
-      background: var(--el-fill-color-light);
-      cursor: pointer;
-    }
-  }
-}
-
-.el-space.tags{
-  .el-check-tag {
-    box-sizing: border-box;
-    margin: 5px 0;
-    padding: 0;
-    .el-tag {
-      background: transparent;
-      border: none;
-      .el-icon:hover {
-        background: rgba(255, 255, 255, 0.42);
-      }
-    }
-  }
-}
-
-.el-check-tag {
-  .el-icon {
-    margin-right: 5px;
-  }
-}
 </style>

@@ -5,8 +5,8 @@ interface ISwitch {
     active: boolean
   }
 }
-//  Tips接口
-interface ITips {
+//  通用string：string
+interface IS2S {
   [propName: string]: string
 }
 // new tag
@@ -24,6 +24,7 @@ interface ISaveBase {
   active: boolean
   weight?: number
   weightNu?: number
+  weightColor?: string
 }
 //  tag组的保存属性
 interface ISaveTagGroup extends ISaveBase{

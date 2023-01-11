@@ -42,7 +42,7 @@ import { ElMessage } from 'element-plus'
 import useClipboard from 'vue-clipboard3'
 
 //  Tips集合
-const tips: ITips = {
+const tips: IS2S = {
   add: '添加表',
   input: '输入表名',
   output: '复制 tag'
@@ -57,6 +57,10 @@ const sw: ISwitch = reactive({
     name: '编辑',
     active: false
   },
+  drag: {
+    name: '拖拽',
+    active: false
+  },
   weight: {
     name: '权重',
     active: false
@@ -67,46 +71,7 @@ const sw: ISwitch = reactive({
   }
 })
 
-const items: TItem = reactive(new Map([
-  // ['测试', {
-  //   key: '测试',
-  //   name: '测试',
-  //   editing: false,
-  //   active: true,
-  //   tagGroups: new Map([
-  //     ['图片质量相关',
-  //       {
-  //         key: '图片质量相关',
-  //         name: '图片质量相关',
-  //         editing: false,
-  //         active: true,
-  //         tags: new Map([
-  //           ['masterpiece',
-  //             {
-  //               key: 'masterpiece',
-  //               name: 'masterpiece',
-  //               editing: false,
-  //               active: true
-  //             }
-  //           ],
-  //           ['best quality',
-  //             {
-  //               key: 'best quality',
-  //               name: 'best quality',
-  //               editing: false,
-  //               active: true
-  //             }
-  //           ]
-  //         ]),
-  //         newTag: {
-  //           inputVisible: false,
-  //           inputValue: ''
-  //         }
-  //       }
-  //     ]
-  //   ])
-  // }]
-]))
+const items: TItem = reactive(new Map())
 const input = ref('')
 const itemAdd = (v: string) => {
   if (v.trim().length !== 0) {
@@ -129,7 +94,7 @@ const itemDelete = (v: TBaseMapKey) => {
   items.delete(v)
 }
 const itemChange = (v: [TBaseMapKey, IItem]) => {
-  console.log(v)
+  // console.log(v)
   if (items.has(v[0])) {
     items.set(v[0], v[1])
   }
@@ -144,17 +109,16 @@ let tagsGet: () => void
   // 扫描所有启用的tag
   tagsGet = () => {
     // 大列表
-    Array.from(items.values()).forEach(v2 => {
+    items.forEach(v2 => {
       if (v2.active) {
-        // console.log(Array.from(v2.tableData.values()))
         // tag 组
         const t2: string[] = []
-        Array.from(v2.tagGroups.values()).forEach(v1 => {
+        v2.tagGroups.forEach(v1 => {
           if (v1.active) {
             // console.log(v.tags)
             // tag
             const t1: string[] = []
-            Array.from(v1.tags.values()).forEach(v => {
+            v1.tags.forEach(v => {
               if (v.active) {
                 // console.log(v)
                 tagDispose(v, t1)
@@ -180,15 +144,12 @@ let tagsGet: () => void
   const tagDispose = (v: IBase, t: string[]) => {
     let name
     if (typeof v.weight !== 'undefined' && v.weight !== 0) {
-      console.log('::1')
       const s = v.weight > 0 ? add : sub
       name = v.name.padStart(v.name.length + Math.abs(v.weight), s[0])
       name = name.padEnd(v.name.length + Math.abs(v.weight) * 2, s[1])
     } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0) {
-      console.log('::2')
       name = `(${v.name}:${v.weightNu})`
     } else {
-      console.log('::3')
       name = v.name
     }
     t.push(name)
@@ -197,24 +158,24 @@ let tagsGet: () => void
     if (typeof v.weight !== 'undefined' && v.weight !== 0) {
       const s = v.weight > 0 ? add : sub
       name = name.padStart(name.length + Math.abs(v.weight), s[0])
-      name = name.padEnd(name.length + Math.abs(v.weight) * 2 - 1, s[1])
+      name = name.padEnd(name.length + Math.abs(v.weight), s[1])
     } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0) {
       name = `(${name}:${v.weightNu})`
     }
     t.push(name)
   }
 }
-// 存储
+// 保存和读取
 {
   // 保存
   const Save = () => {
     const t: ISaveItem[] = []
-    Array.from(items.values()).forEach(v3 => {
+    items.forEach(v3 => {
       const t1: ISaveTagGroup[] = []
-      Array.from(v3.tagGroups.values()).forEach(v2 => {
+      v3.tagGroups.forEach(v2 => {
         const t2: ISaveBase[] = []
-        Array.from(v2.tags).forEach(v => {
-          const v1 = v[1]
+        v2.tags.forEach(v => {
+          const v1 = v
           t2.push({
             key: v1.key,
             name: v1.name,
@@ -243,7 +204,7 @@ let tagsGet: () => void
     })
     window.localStorage.setItem('tags', JSON.stringify(t))
   }
-  watch(items, value => Save(), { deep: true })
+  watch(items, () => Save(), { deep: true })
   // 读取
   const Load = () => {
     const tags: string | null = window.localStorage.getItem('tags')
@@ -292,7 +253,7 @@ let tagsGet: () => void
         })
         items.set(item.key, item)
       })
-      console.log(tagsJSON)
+      // console.log(tagsJSON)
     } catch (e) {
       console.log(tags, e)
     }
