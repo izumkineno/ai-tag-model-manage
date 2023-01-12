@@ -1,7 +1,7 @@
 <template>
   <div class="top">
     <h1 class="title">炼丹炉</h1>
-    <h2 class="title">AI绘画tag模型和部件属性管理器</h2>
+    <h2 class="title">AI绘画tag模板管理器</h2>
     <span class="">By izum</span>
   </div>
   <div class="frame-tools">

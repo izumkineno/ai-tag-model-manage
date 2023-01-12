@@ -74,15 +74,17 @@ const sw: ISwitch = reactive({
 const items: TItem = reactive(new Map())
 const input = ref('')
 const itemAdd = (v: string) => {
-  if (v.trim().length !== 0) {
+  const v1 = v.trim()
+  if (v1.length !== 0) {
+    const v2 = v1 + (Math.random() * 100).toString()
     const t: IItem = {
-      key: v,
-      name: v,
+      key: v2,
+      name: v1,
       editing: false,
       active: true,
-      tagGroups: new Map()
+      children: new Map()
     }
-    items.set(v, t)
+    items.set(v2, t)
     input.value = ''
   }
 }
@@ -113,12 +115,12 @@ let tagsGet: () => void
       if (v2.active) {
         // tag 组
         const t2: string[] = []
-        v2.tagGroups.forEach(v1 => {
+        v2.children.forEach(v1 => {
           if (v1.active) {
             // console.log(v.tags)
             // tag
             const t1: string[] = []
-            v1.tags.forEach(v => {
+            v1.children.forEach(v => {
               if (v.active) {
                 // console.log(v)
                 tagDispose(v, t1)
@@ -170,19 +172,21 @@ let tagsGet: () => void
   // 保存
   const Save = () => {
     const t: ISaveItem[] = []
+    const template = (v: IBase) => {
+      return {
+        key: v.key,
+        name: v.name,
+        active: v.active,
+        weight: v.weight,
+        weightNu: v.weightNu
+      }
+    }
     items.forEach(v3 => {
       const t1: ISaveTagGroup[] = []
-      v3.tagGroups.forEach(v2 => {
+      v3.children.forEach(v2 => {
         const t2: ISaveBase[] = []
-        v2.tags.forEach(v => {
-          const v1 = v
-          t2.push({
-            key: v1.key,
-            name: v1.name,
-            active: v1.active,
-            weight: v1.weight,
-            weightNu: v1.weightNu
-          })
+        v2.children.forEach(v => {
+          t2.push(template(v))
         })
           t1.push({
             key: v2.key,
@@ -190,7 +194,7 @@ let tagsGet: () => void
             active: v2.active,
             weight: v2.weight,
             weightNu: v2.weightNu,
-            tags: t2
+            children: t2
         })
       })
       t.push({
@@ -199,7 +203,7 @@ let tagsGet: () => void
         active: v3.active,
         weight: v3.weight,
         weightNu: v3.weightNu,
-        tagGroups: t1
+        children: t1
       })
     })
     window.localStorage.setItem('tags', JSON.stringify(t))
@@ -218,9 +222,9 @@ let tagsGet: () => void
           active: v2.active,
           weight: v2.weight,
           weightNu: v2.weightNu,
-          tagGroups: new Map()
+          children: new Map()
         }
-        v2.tagGroups.forEach((v1: ISaveTagGroup) => {
+        v2.children.forEach((v1: ISaveTagGroup) => {
           const tagGroup: ITagGroup = {
             key: v1.key,
             name: v1.name,
@@ -228,7 +232,7 @@ let tagsGet: () => void
             active: v1.active,
             weight: v1.weight,
             weightNu: v1.weightNu,
-            tags: new Map(),
+            children: new Map(),
             newTag: {
               inputVisible: false,
               inputValue: ''
@@ -238,7 +242,7 @@ let tagsGet: () => void
               inputValue: ''
             }
           }
-          v1.tags.forEach((v: ISaveBase) => {
+          v1.children.forEach((v: ISaveBase) => {
             const tag: IBase = {
               key: v.key,
               name: v.name,
@@ -247,9 +251,9 @@ let tagsGet: () => void
               weight: v.weight,
               weightNu: v.weightNu
             }
-            tagGroup.tags.set(v.key, tag)
+            tagGroup.children.set(v.key, tag)
           })
-          item.tagGroups.set(tagGroup.key, tagGroup)
+          item.children.set(tagGroup.key, tagGroup)
         })
         items.set(item.key, item)
       })

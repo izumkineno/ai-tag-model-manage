@@ -28,11 +28,11 @@ interface ISaveBase {
 }
 //  tag组的保存属性
 interface ISaveTagGroup extends ISaveBase{
-  tags: ISaveBase[]
+  children: ISaveBase[]
 }
 //  tag表保存属性
 interface ISaveItem extends ISaveBase {
-  tagGroups: ISaveTagGroup[]
+  children: ISaveTagGroup[]
 }
 //  tag和组以及表的基础属性
 interface IBase extends ISaveBase{
@@ -42,7 +42,7 @@ interface IBase extends ISaveBase{
 type TTags = Map<TBaseMapKey, IBase>
 //  tag组
 interface ITagGroup extends IBase{
-  tags: TTags
+  children: TTags
   newTag: IInput
   GroupEdit: IInput
 }
@@ -50,7 +50,7 @@ interface ITagGroup extends IBase{
 type TTagGroups = Map<TBaseMapKey, ITagGroup>
 //  tag表
 interface IItem extends IBase {
-  tagGroups: TTagGroups
+  children: TTagGroups
 }
 //  tag表集合
 type TItem = Map<TBaseMapKey, IItem>

@@ -1,5 +1,5 @@
 <template>
-  <el-collapse-item :name="props.colName">
+  <el-collapse-item :name="props.colName" >
     <!--  头  -->
     <template #title>
       <el-space wrap>
@@ -36,6 +36,7 @@
             v-show="props.item.editing"
             ref="InputRefItem"
             v-model="item.name"
+            @input="autoInputLength(item.name)"
             @keyup.enter="InputEditing(item)"
             @blur="InputEditing(item)"
             @click.stop
@@ -64,16 +65,21 @@
       </el-space>
     </template>
     <!--  主体  -->
-    <el-table :data="Array.from(item.tagGroups.values())" style="width: 100%">
+    <el-table :data="Array.from(item.children.values())" style="width: 100%">
       <el-table-column type="index" />
       <el-table-column label="组名" width="200">
         <template #default="scope">
           <!--    tag 组      -->
-          <el-check-tag
-            class="tag-group"
-            :style="WeightColor(scope.row, item.active)"
-            :checked="scope.row.active && props.item.active"
-            @change="tagToggle(scope.row)">
+          <el-check-tag class="tag-group"
+                        :style="WeightColor(scope.row, item.active)"
+                        :checked="scope.row.active && props.item.active"
+                        :draggable="sw.drag.active"
+                        @contextmenu.prevent.stop="contextMenuCopy(scope.row)"
+                        @dragenter="Drag($event, scope.row, item, dragIndex.tagGroup)"
+                        @dragleave="Drag($event, scope.row, item, dragIndex.tagGroup)"
+                        @dragstart="Drag($event, scope.row, item, dragIndex.tagGroup)"
+                        @dragend="Drag($event, scope.row, item,dragIndex.tagGroup)"
+                        @change="tagToggle(scope.row)">
             <el-icon
               @click.stop="showInputTag(scope.row)"
               v-show="!scope.row.editing && props.sw.edit.active"
@@ -85,6 +91,7 @@
               v-if="scope.row.editing"
               v-model="scope.row.name"
               ref="InputRefGroup"
+              @input="autoInputLength(scope.row.name)"
               @keyup.enter="InputEditing(scope.row)"
               @blur="InputEditing(scope.row)"
               @click.stop/>
@@ -125,81 +132,84 @@
       <el-table-column label="tags">
         <template #default="scope">
           <!--    标签      -->
-          <el-space class="tags" wrap>
-            <!--     已展示标签       -->
-            <el-check-tag
-              v-for="i in scope.row.tags.values()" :key="i.key"
-              :style="WeightColor(i, scope.row.active, item.active)"
-              :checked="i.active && scope.row.active && props.item.active"
-              v-show="!scope.row.GroupEdit.inputVisible"
-              :draggable="sw.drag.active"
-              @dragenter="Drag($event,  i, scope.row,)"
-              @dragleave="Drag($event,  i, scope.row,)"
-              @dragstart="Drag($event,  i, scope.row,)"
-              @dragend="Drag($event,  i, scope.row,)"
-              @change="tagToggle(i)">
-              <el-tag @close="tagClose(scope.row.tags, i)"  closable>
-                <el-icon v-show="!i.editing" size="small"  @click.stop="showInputTag(i)">
-                  <Edit />
-                </el-icon>
-                <el-input
-                  v-if="i.editing"
-                  v-model="i.name"
-                  ref="InputRefTag"
-                  @keyup.enter="InputEditing(i)"
-                  @blur="InputEditing(i)"
-                  @click.stop/>
-                <span v-else>
+          <el-scrollbar wrap-style="height: 99%">
+            <el-col class="tags" wrap>
+              <!--     已展示标签       -->
+              <el-check-tag
+                v-for="i in scope.row.children.values()" :key="i.key"
+                :style="WeightColor(i, scope.row.active, item.active)"
+                :checked="i.active && scope.row.active && props.item.active"
+                v-show="!scope.row.GroupEdit.inputVisible"
+                :draggable="sw.drag.active"
+                @dragenter="Drag($event,  i, scope.row, dragIndex.tag)"
+                @dragleave="Drag($event,  i, scope.row, dragIndex.tag)"
+                @dragstart="Drag($event,  i, scope.row, dragIndex.tag)"
+                @dragend="Drag($event,  i, scope.row, dragIndex.tag)"
+                @change="tagToggle(i)">
+                <el-tag @close="tagClose(scope.row.children, i)"  closable>
+                  <el-icon v-show="!i.editing" size="small"  @click.stop="showInputTag(i)">
+                    <Edit />
+                  </el-icon>
+                  <el-input
+                    v-if="i.editing"
+                    v-model="i.name"
+                    ref="InputRefTag"
+                    style="width: 100%"
+                    @keyup.enter="InputEditing(i)"
+                    @blur="InputEditing(i)"
+                    @click.stop/>
+                  <div v-if="i.editing" style="display: inline-block; visibility: hidden; position: relative;left: 0">{{ i.name }}</div>
+                  <span v-else>
                   {{ i.name }}
                 </span>
-              </el-tag>
-              <el-input-number
-                v-show="props.sw.weight.active && !props.sw.weightNu.active && i.active && scope.row.active && item.active"
-                v-model="i.weight"
-                @change="i.weightNu=0"
-                :step="1"
-                :precision="0"
-                :style="{width: StyleInput.width}"
-                size="small"
-                @click.stop/>
-              <el-input-number
-                v-show="props.sw.weight.active && props.sw.weightNu.active && i.active && scope.row.active && item.active"
-                v-model="i.weightNu"
-                @change="i.weight=0"
-                :min="0"
-                :step="0.1"
-                :precision="2"
-                :style="{width: StyleInput.width}"
-                size="small"
-                @click.stop/>
-            </el-check-tag>
-            <!--     新标签       -->
-            <el-input
-              v-if="scope.row.newTag.inputVisible"
-              ref="InputRefNew"
-              v-model="scope.row.newTag.inputValue"
-              @keyup.enter="InputConfirm(scope.row)"
-              @blur="InputConfirm(scope.row)"
-            />
-            <el-button v-else size="small" @click="showInputNew(scope.row.newTag)">
-              + New Tag
-            </el-button>
-            <!--     组编辑       -->
-<!--            <el-input-->
-<!--              ref="InputRefNew"-->
-<!--              v-model="scope.row.GroupEdit.inputValue"-->
-<!--              @keyup.enter="InputGroupEditing(scope.row)"-->
-<!--              @blur="InputGroupEditing(scope.row)"-->
-<!--              type="textarea"-->
-<!--              autosize-->
-<!--            />-->
-<!--            <el-button-->
-<!--              @click="showInputGroupEdit(scope.row.GroupEdit)"-->
-<!--              v-show="props.sw.edit.active"-->
-<!--              :icon="Edit"-->
-<!--              size="small"-->
-<!--              circle />-->
-          </el-space>
+                </el-tag>
+                <el-input-number
+                  v-show="props.sw.weight.active && !props.sw.weightNu.active && i.active && scope.row.active && item.active"
+                  v-model="i.weight"
+                  @change="i.weightNu=0"
+                  :step="1"
+                  :precision="0"
+                  :style="{width: StyleInput.width}"
+                  size="small"
+                  @click.stop/>
+                <el-input-number
+                  v-show="props.sw.weight.active && props.sw.weightNu.active && i.active && scope.row.active && item.active"
+                  v-model="i.weightNu"
+                  @change="i.weight=0"
+                  :min="0"
+                  :step="0.1"
+                  :precision="2"
+                  :style="{width: StyleInput.width}"
+                  size="small"
+                  @click.stop/>
+              </el-check-tag>
+              <!--     新标签       -->
+              <el-input
+                v-if="scope.row.newTag.inputVisible"
+                ref="InputRefNew"
+                v-model="scope.row.newTag.inputValue"
+                @keyup.enter="InputConfirm(scope.row)"
+                @blur="InputConfirm(scope.row)"/>
+              <el-button v-else size="small" @click="showInputNew(scope.row.newTag)">
+                + New Tag
+              </el-button>
+              <!--     组编辑       -->
+              <!--            <el-input-->
+              <!--              ref="InputRefNew"-->
+              <!--              v-model="scope.row.GroupEdit.inputValue"-->
+              <!--              @keyup.enter="InputGroupEditing(scope.row)"-->
+              <!--              @blur="InputGroupEditing(scope.row)"-->
+              <!--              type="textarea"-->
+              <!--              autosize-->
+              <!--            />-->
+              <!--            <el-button-->
+              <!--              @click="showInputGroupEdit(scope.row.GroupEdit)"-->
+              <!--              v-show="props.sw.edit.active"-->
+              <!--              :icon="Edit"-->
+              <!--              size="small"-->
+              <!--              circle />-->
+            </el-col>
+          </el-scrollbar>
         </template>
       </el-table-column>
     </el-table>
@@ -221,9 +231,11 @@
 <script setup lang='ts'>
 import { Close, Edit } from '@element-plus/icons-vue'
 import { reactive, ref, nextTick, defineProps, defineEmits, toRaw, computed } from 'vue'
-import { ElInput } from 'element-plus'
+import { ElInput, ElMessage } from 'element-plus'
+import useClipboard from 'vue-clipboard3'
 
 // todo: 建立可编辑和删除tag组件
+// todo: 修复文件以符合ts规范
 const StyleInput = {
   width: '80px',
   marginLeft: '5px'
@@ -265,32 +277,38 @@ const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undef
   return style
 }
 
-let Drag
+// todo: 跨组拖动
+let Drag: (e: DragEvent, i: IBase, parents: ITagGroup, pathIndex: number) => void
+const dragIndex = {
+  tag: 31,
+  tagGroup: 27
+}
 {
   let key: string | undefined
   let lastKey: string | undefined
   let lastTag: any
-  Drag = (e: DragEvent, i: IBase, tagGroup: ITagGroup) => {
+  Drag = (e: DragEvent, i: IBase, parents: ITagGroup, pathIndex: number) => {
     // console.log(e.type, e, i.key)
     const path = e.path
+    // // 主框位置
+    // const pathIndex = 29
     // tag 拖拽
-    const TagGroupDrag = () => {
-      lastTag.style.background = ''
-      console.log(key, lastKey, lastTag)
+    const TagDrag = () => {
       // 转换组的key，用于定位和修改
-      const keys = Array.from(tagGroup.tags.keys())
-      const index = keys.indexOf(key)
+      const keys = Array.from(parents.children.keys())
+      let index = keys.indexOf(key)
       // 转换组
-      const t = Array.from(tagGroup.tags)
-      const tag = tagGroup.tags.get(key)
-      // 判断当前组中是否有拖拽的tag
-      if (tagGroup.tags.has(lastKey)) {
-        const indexTarget = keys.indexOf(lastKey)
-        console.log(index, indexTarget)
+      const t = Array.from(parents.children)
+      const tag = parents.children.get(key)
+      // 判断当前组中是否有目标的tag
+      if (parents.children.has(lastKey)) {
+        let indexTarget = keys.indexOf(lastKey)
+        // console.log(index, indexTarget)
+        index > indexTarget ? index++ : indexTarget++
         t.splice(indexTarget, 0, [tag.key, tag])
-        t.splice(index + 1, 1)
-        console.log(tag, t)
-        tagGroup.tags = new Map<TBaseMapKey, IBase>(t)
+        t.splice(index, 1)
+        // console.log(tag, t)
+        parents.children = new Map(t)
       }
     }
     switch (e.type) {
@@ -299,31 +317,25 @@ let Drag
         lastKey = undefined
         break
       case 'dragenter':
-        if (i.key !== key) {
-          path[path.length - 29].style.background = 'rgba(0,0,0,0.3)'
-        }
-        if (path[path.length - 29] !== lastTag) {
-          lastTag.style.background = ''
+        if (path.length >= pathIndex) {
+          if (i.key !== key) {
+            path[path.length - pathIndex].style.background = 'rgba(0,0,0,0.3)'
+          }
+          if (path[path.length - pathIndex] !== lastTag) {
+            lastTag.style.background = ''
+          }
         }
         break
       case 'dragleave':
         lastKey = i.key
-        lastTag = path[path.length - 29]
+        lastTag = path[path.length - pathIndex]
         break
       case 'dragend':
-        TagGroupDrag()
+        lastTag.style.background = ''
+        // console.log(key, lastKey, lastTag)
+        TagDrag()
         break
     }
-
-    // a.splice(0, 0, ['a', {
-    //   key: 'a',
-    //   name: 'v.name',
-    //   editing: false,
-    //   active: false
-    // }])
-    // console.log(a)
-    // tagGroup.tags = new Map(a)
-    // console.log(new Map(a))
   }
 }
 
@@ -351,13 +363,13 @@ const itemDelete = () => {
   emit('itemDelete', props.item.key)
 }
 
-// ************************* tag 相关
+// tag 相关
 const InputRefTag = ref<InstanceType<typeof ElInput>>()
 // tag 删除
 const tagClose = (tagGroup: TTagGroups, tag: IBase) => {
   tagGroup.delete(tag.key)
 }
-// ************************* tagGroup 相关
+// tagGroup 相关
 const InputRefGroup = ref<InstanceType<typeof ElInput>>()
 // tagGroup 输入
 const inputGroup: IInput = reactive({
@@ -366,9 +378,9 @@ const inputGroup: IInput = reactive({
 })
 // tagGroup 删除
 const tagGroupDelete = (i: ITagGroup) => {
-  item.value.tagGroups.delete(i.key)
+  item.value.children.delete(i.key)
 }
-// ************************* item 相关
+// item 相关
 const InputRefItem = ref<InstanceType<typeof ElInput>>()
 // ************************* 其他或通用
 const InputRefNew = ref<InstanceType<typeof ElInput>>()
@@ -376,16 +388,17 @@ const InputRefNew = ref<InstanceType<typeof ElInput>>()
 const tagToggle = (tag: IBase) => {
   tag.active = !tag.active
 }
+
 // 编辑
 const InputEditing = (v: IBase) => {
   v.name = v.name.trim()
   v.editing = false
 }
-// tagGroup 中所有 tag 编辑
-const InputGroupEditing = (v: IBase) => {
-  v.name = v.name.trim()
-  v.editing = false
-}
+// // tagGroup 中所有 tag 编辑
+// const InputGroupEditing = (v: IBase) => {
+//   v.name = v.name.trim()
+//   v.editing = false
+// }
 // todo 计划合并
 // todo: 修改判断方案
 // todo: 当输入为空时删除标签或取消编辑
@@ -416,6 +429,7 @@ const InputConfirm = (v: ITagGroup) => {
     const value = v.newTag.inputValue.trim()
     value.split(',').forEach(value1 => {
       const v1 = value1.trim()
+      // const v2 = v1 + (Math.random() * 100).toString()
       const n = {
         key: v1,
         name: v1,
@@ -423,7 +437,7 @@ const InputConfirm = (v: ITagGroup) => {
         active: true
       }
       if (v1.length > 0) {
-        v.tags.set(v1, n)
+        v.children.set(v1, n)
       }
     })
   }
@@ -432,13 +446,14 @@ const InputConfirm = (v: ITagGroup) => {
 }
 const InputConfirmGroup = (v: IInput) => {
   if (v.inputValue) {
-    const value = v.inputValue.trim()
+    const v1 = v.inputValue.trim()
+    const v2 = v1 + (Math.random() * 100).toString()
     const n: ITagGroup = {
-      key: value,
-      name: value,
+      key: v2,
+      name: v1,
       editing: false,
       active: true,
-      tags: new Map(),
+      children: new Map(),
       newTag: {
         inputVisible: false,
         inputValue: ''
@@ -448,10 +463,22 @@ const InputConfirmGroup = (v: IInput) => {
         inputValue: ''
       }
     }
-    item.value.tagGroups.set(value, n)
+    item.value.children.set(v2, n)
   }
   v.inputVisible = false
   v.inputValue = ''
+}
+
+const contextMenuCopy = (i: ITagGroup) => {
+  const tags = Array.from(i.children).map(value => {
+    return value[1].name
+  })
+  const { toClipboard } = useClipboard()
+  toClipboard(tags.toString())
+  ElMessage({
+    message: `${i.name} 复制成功：\n${tags.toString()}`,
+    type: 'success'
+  })
 }
 
 </script>
@@ -500,10 +527,10 @@ const InputConfirmGroup = (v: IInput) => {
   }
 }
 
-.el-space.tags{
+.el-col.tags{
   .el-check-tag {
     box-sizing: border-box;
-    margin: 5px 0;
+    margin: 5px;
     padding: 0;
     .el-tag {
       background: transparent;
