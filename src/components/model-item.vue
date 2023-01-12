@@ -470,7 +470,9 @@ const InputConfirmGroup = (v: IInput) => {
 }
 
 const contextMenuCopy = (i: ITagGroup) => {
-  const tags = Array.from(i.children).map(value => {
+  const tags = Array.from(i.children).filter(v => {
+    return v[1].active
+  }).map(value => {
     return value[1].name
   })
   const { toClipboard } = useClipboard()
