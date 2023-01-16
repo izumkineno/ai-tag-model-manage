@@ -28,12 +28,14 @@ interface ISaveBase {
 }
 //  tag组的保存属性
 interface ISaveTagGroup extends ISaveBase{
-  children: ISaveBase[]
+  children?: ISaveBase[]
+  wordMode?: boolean
 }
 //  tag表保存属性
 interface ISaveItem extends ISaveBase {
-  children: ISaveTagGroup[]
+  children?: ISaveTagGroup[]
 }
+
 //  tag和组以及表的基础属性
 interface IBase extends ISaveBase{
   editing: boolean
@@ -41,7 +43,7 @@ interface IBase extends ISaveBase{
 //  tag的map集合
 type TTags = Map<TBaseMapKey, IBase>
 //  tag组
-interface ITagGroup extends IBase{
+interface ITagGroup extends IBase, ISaveTagGroup{
   children: TTags
   newTag: IInput
   GroupEdit: IInput
@@ -49,7 +51,7 @@ interface ITagGroup extends IBase{
 //  tag组的集合
 type TTagGroups = Map<TBaseMapKey, ITagGroup>
 //  tag表
-interface IItem extends IBase {
+interface IItem extends IBase, ISaveItem {
   children: TTagGroups
 }
 //  tag表集合

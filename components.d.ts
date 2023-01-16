@@ -25,6 +25,7 @@ declare module '@vue/runtime-core' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
+    ElUpload: typeof import('element-plus/es')['ElUpload']
     MModel: typeof import('./src/components/m-model.vue')['default']
     ModelItem: typeof import('./src/components/model-item.vue')['default']
     MTools: typeof import('./src/components/m-tools.vue')['default']

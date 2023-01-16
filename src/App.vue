@@ -1,21 +1,26 @@
 <template>
-  <div class="top">
-    <h1 class="title">炼丹炉</h1>
-    <h2 class="title">AI绘画tag模板管理器</h2>
-    <span class="">By izum</span>
-  </div>
-  <div class="frame-tools">
-    <model />
-    <tools />
-  </div>
+    <div class="top">
+      <h1 class="title">{{ main.title }}</h1>
+      <h2 class="title">{{ main.subhead }}</h2>
+      <span>{{ main.auth }}</span>
+    </div>
+    <div class="frame-tools">
+      <model />
+      <tools />
+    </div>
 </template>
 
 <script setup>
-import model from '@/components/m-model.vue'
-import tools from '@/components/m-tools.vue'
+import Model from '@/components/m-model.vue'
+import Tools from '@/components/m-tools.vue'
 import { onMounted } from 'vue'
+const main = {
+  title: '炼金桌',
+  subhead: 'AI绘画tag模板管理器',
+  auth: 'By izumneno'
+}
 onMounted(() => {
-  document.title = '炼丹炉'
+  document.title = main.title
 })
 </script>
 
@@ -51,7 +56,6 @@ html {
 }
 
 #app {
-  width: 100vw;
   height: 100vh;
   min-width: var(--min-width);
   min-height: var(--min-heigh);

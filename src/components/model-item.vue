@@ -70,6 +70,14 @@
       <el-table-column label="组名" width="200">
         <template #default="scope">
           <!--    tag 组      -->
+          <el-button
+            @click.stop="modeChange(scope.row)"
+            :type="scope.row.wordMode ? 'warning' : 'info'"
+            v-show="props.sw.mode.active"
+            size="small"
+            class="item-icon"
+            :icon="Switch"
+            style="margin: 0 5px" />
           <el-check-tag class="tag-group"
                         :style="WeightColor(scope.row, item.active)"
                         :checked="scope.row.active && props.item.active"
@@ -155,8 +163,8 @@
                     v-model="i.name"
                     ref="InputRefTag"
                     style="width: 100%"
-                    @keyup.enter="InputEditing(i)"
-                    @blur="InputEditing(i)"
+                    @keyup.enter="InputEditing(i, scope.row.children)"
+                    @blur="InputEditing(i, scope.row.children)"
                     @click.stop/>
                   <div v-if="i.editing" style="display: inline-block; visibility: hidden; position: relative;left: 0">{{ i.name }}</div>
                   <span v-else>
@@ -229,13 +237,14 @@
 </template>
 
 <script setup lang='ts'>
-import { Close, Edit } from '@element-plus/icons-vue'
+import { Close, Edit, Switch } from '@element-plus/icons-vue'
 import { reactive, ref, nextTick, defineProps, defineEmits, toRaw, computed } from 'vue'
 import { ElInput, ElMessage } from 'element-plus'
 import useClipboard from 'vue-clipboard3'
 
 // todo: 建立可编辑和删除tag组件
 // todo: 修复文件以符合ts规范
+// todo: 合并冗余，优化代码（所有功能实现后）
 const StyleInput = {
   width: '80px',
   marginLeft: '5px'
@@ -284,14 +293,13 @@ const dragIndex = {
   tagGroup: 27
 }
 {
-  let key: string | undefined
-  let lastKey: string | undefined
+  let key: string
+  let lastKey: string
   let lastTag: any
   Drag = (e: DragEvent, i: IBase, parents: ITagGroup, pathIndex: number) => {
     // console.log(e.type, e, i.key)
     const path = e.path
     // // 主框位置
-    // const pathIndex = 29
     // tag 拖拽
     const TagDrag = () => {
       // 转换组的key，用于定位和修改
@@ -305,7 +313,7 @@ const dragIndex = {
         let indexTarget = keys.indexOf(lastKey)
         // console.log(index, indexTarget)
         index > indexTarget ? index++ : indexTarget++
-        t.splice(indexTarget, 0, [tag.key, tag])
+        t.splice(indexTarget, 0, [tag!.key, tag])
         t.splice(index, 1)
         // console.log(tag, t)
         parents.children = new Map(t)
@@ -314,7 +322,7 @@ const dragIndex = {
     switch (e.type) {
       case 'dragstart':
         key = i.key
-        lastKey = undefined
+        lastKey = ''
         break
       case 'dragenter':
         if (path.length >= pathIndex) {
@@ -380,6 +388,21 @@ const inputGroup: IInput = reactive({
 const tagGroupDelete = (i: ITagGroup) => {
   item.value.children.delete(i.key)
 }
+// tag组模式改变，标签模式和组词模式
+const modeChange = (i: ITagGroup) => {
+  let msg = `${i.name}组描述语句模式 `
+  if (typeof i.wordMode !== 'undefined') {
+    i.wordMode = !i.wordMode
+    msg += i.wordMode ? '开启' : '关闭'
+  } else {
+    i.wordMode = true
+    msg += '开启'
+  }
+  ElMessage({
+    message: msg,
+    type: 'info'
+  })
+}
 // item 相关
 const InputRefItem = ref<InstanceType<typeof ElInput>>()
 // ************************* 其他或通用
@@ -390,8 +413,11 @@ const tagToggle = (tag: IBase) => {
 }
 
 // 编辑
-const InputEditing = (v: IBase) => {
+const InputEditing = (v: IBase, parent?: TTagGroups) => {
   v.name = v.name.trim()
+  if (v.name === '' && typeof parent !== 'undefined') {
+    tagClose(parent, v)
+  }
   v.editing = false
 }
 // // tagGroup 中所有 tag 编辑
@@ -427,7 +453,8 @@ const showInputTag = (v: IBase) => {
 const InputConfirm = (v: ITagGroup) => {
   if (v.newTag.inputValue) {
     const value = v.newTag.inputValue.trim()
-    value.split(',').forEach(value1 => {
+    const s = v.wordMode ? ' ' : ','
+    value.split(s).forEach(value1 => {
       const v1 = value1.trim()
       // const v2 = v1 + (Math.random() * 100).toString()
       const n = {
@@ -447,7 +474,7 @@ const InputConfirm = (v: ITagGroup) => {
 const InputConfirmGroup = (v: IInput) => {
   if (v.inputValue) {
     const v1 = v.inputValue.trim()
-    const v2 = v1 + (Math.random() * 100).toString()
+    const v2 = v1 + (Math.random() * 1000).toFixed(0).toString()
     const n: ITagGroup = {
       key: v2,
       name: v1,
@@ -547,6 +574,7 @@ const contextMenuCopy = (i: ITagGroup) => {
     }
   }
   .el-check-tag.is-checked {
+    display: inline-block !important;
     .el-tag {
       color: @on;
       .el-icon.el-tag__close {
