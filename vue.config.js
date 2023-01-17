@@ -19,7 +19,7 @@ module.exports = defineConfig({
   },
   chainWebpack: config => {
     config.plugin('html').tap(args => {
-      args[0].title = '炼丹炉'
+      args[0].title = '炼金桌'
       return args
     })
   }

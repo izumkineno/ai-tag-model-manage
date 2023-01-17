@@ -19,9 +19,6 @@ const main = {
   subhead: 'AI绘画tag模板管理器',
   auth: 'By izumneno'
 }
-onMounted(() => {
-  document.title = main.title
-})
 </script>
 
 <style lang="less">

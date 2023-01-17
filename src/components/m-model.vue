@@ -36,15 +36,15 @@
     </template>
     <el-collapse>
       <el-scrollbar>
-        <ModelItem v-for="i in items.values()" :key="i.key"
+        <ModelItem v-for="i in items.children.values()" :key="i.key"
                    :col-name="i.key"
                    :item="i"
                    :sw="sw"
                    :draggable="sw.drag.active"
-                   @dragenter="Drag($event,  i, items)"
-                   @dragleave="Drag($event,  i, items)"
-                   @dragstart="Drag($event,  i, items)"
-                   @dragend="Drag($event,  i, items)"
+                   @dragenter="DragItem($event,  i, items)"
+                   @dragleave="DragItem($event,  i, items)"
+                   @dragstart="DragItem($event,  i, items)"
+                   @dragend="DragItem($event,  i, items)"
                    @itemState="itemState"
                    @itemDelete="itemDelete"
                    @itemChange="itemChange"/>
@@ -53,7 +53,7 @@
   </el-card>
 </template>
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import ModelItem from '@/components/model-item.vue'
 import { CopyDocument, Plus, Download, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -78,16 +78,20 @@ const sw: ISwitch = reactive({
     name: '编辑',
     active: false
   },
-  drag: {
-    name: '拖拽',
-    active: false
-  },
   weight: {
     name: '权重',
     active: false
   },
+  weightSym: {
+    name: '权重 - { } ',
+    active: false
+  },
   weightNu: {
     name: '数字权重',
+    active: false
+  },
+  drag: {
+    name: '拖拽',
     active: false
   },
   mode: {
@@ -96,7 +100,9 @@ const sw: ISwitch = reactive({
   }
 })
 
-const items: TItem = reactive(new Map())
+const items: DataMain = reactive({
+  children: new Map()
+})
 const input = ref('')
 const itemAdd = (v: string) => {
   const v1 = v.trim()
@@ -109,36 +115,49 @@ const itemAdd = (v: string) => {
       active: true,
       children: new Map()
     }
-    items.set(v2, t)
+    items.children.set(v2, t)
     input.value = ''
   }
 }
 const itemState = (v: TBaseMapKey) => {
-  const cu = items.get(v)
+  const cu = items.children.get(v)
   cu!.active = !cu!.active
 }
 const itemDelete = (v: TBaseMapKey) => {
-  items.delete(v)
+  items.children.delete(v)
 }
 const itemChange = (v: [TBaseMapKey, IItem]) => {
   // console.log(v)
-  if (items.has(v[0])) {
-    items.set(v[0], v[1])
+  if (items.children.has(v[0])) {
+    items.children.set(v[0], v[1])
   }
 }
 
-let Drag: (e: DragEvent, i: IItem, parents: TItem) => void
+// todo: 合并相同
+let DragItem: (e: DragEvent, i: IBase, parents: DataMain) => void
 {
-  let key = ''
-  let lastKey = ''
-  Drag = (e: DragEvent, i: IItem, parents: TItem) => {
-    console.log(e.type, e, i.key)
+  let key: string
+  let lastKey: string
+  DragItem = (e: DragEvent, i: IBase, parents: DataMain) => {
+    // console.log(e.type, e, i.key)
+    // tag 拖拽
     const TagDrag = () => {
-      console.log(key, lastKey)
-      const t1 = parents.get(key)
-      const t2 = parents.get(lastKey)
-      parents.set(key, t2)
-      parents.set(lastKey, t1)
+      // 转换组的key，用于定位和修改
+      const keys = Array.from(parents.children.keys())
+      let index = keys.indexOf(key)
+      // 转换组
+      const t = Array.from(parents.children)
+      const tag = parents.children.get(key)
+      // 判断当前组中是否有目标的tag
+      if (parents.children.has(lastKey)) {
+        let indexTarget = keys.indexOf(lastKey)
+        // console.log(index, indexTarget)
+        index > indexTarget ? index++ : indexTarget++
+        t.splice(indexTarget, 0, [tag!.key, tag])
+        t.splice(index, 1)
+        // console.log(tag, t)
+        parents.children = new Map(t)
+      }
     }
     switch (e.type) {
       case 'dragstart':
@@ -159,6 +178,11 @@ let Drag: (e: DragEvent, i: IItem, parents: TItem) => void
 
 let tagsGet: () => void
 {
+  const add = ['(', ')']
+  const sub = computed(() => {
+    return sw.weightSym.active ? ['{', '}'] : ['[', ']']
+  })
+
   // 输出tag集合
   const tags: string[] = []
   // 粘贴板
@@ -166,7 +190,7 @@ let tagsGet: () => void
   // 扫描所有启用的tag
   tagsGet = () => {
     // 大列表
-    items.forEach(v2 => {
+    items.children.forEach(v2 => {
       if (v2.active && v2.children.size > 0) {
         // tag 组
         const t2: string[] = []
@@ -199,13 +223,11 @@ let tagsGet: () => void
     })
     tags.length = 0
   }
-  const add = ['(', ')']
-  const sub = ['{', '}']
   // 扫描后的处理函数
   const tagDispose = (v: IBase, t: string[]) => {
     let name
     if (typeof v.weight !== 'undefined' && v.weight !== 0) {
-      const s = v.weight > 0 ? add : sub
+      const s = v.weight > 0 ? add : sub.value
       name = v.name.padStart(v.name.length + Math.abs(v.weight), s[0])
       name = name.padEnd(v.name.length + Math.abs(v.weight) * 2, s[1])
     } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0) {
@@ -217,7 +239,7 @@ let tagsGet: () => void
   }
   const tagAll = (v: IBase, t: string[], name: string) => {
     if (typeof v.weight !== 'undefined' && v.weight !== 0) {
-      const s = v.weight > 0 ? add : sub
+      const s = v.weight > 0 ? add : sub.value
       name = name.padStart(name.length + Math.abs(v.weight), s[0])
       name = name.padEnd(name.length + Math.abs(v.weight), s[1])
     } else if (typeof v.weightNu !== 'undefined' && v.weightNu !== 0) {
@@ -266,7 +288,7 @@ let Save: () => string
       }
       return temp
     }
-    items.forEach(v3 => {
+    items.children.forEach(v3 => {
       const t1: ISaveTagGroup[] = []
       v3.children.forEach(v2 => {
         const t2: ISaveBase[] = []
@@ -295,8 +317,8 @@ let Save: () => string
         weight: v.weight,
         weightNu: v.weightNu
       }
-      const input = {
-        inputVisible: false,
+      const input: IInput = {
+        editing: false,
         inputValue: ''
       }
       const tG = temp as ITagGroup
@@ -305,7 +327,7 @@ let Save: () => string
       switch (mode) {
         case 'group':
           tG.children = new Map()
-          tG.newTag = input
+          tG.newTag = JSON.parse(JSON.stringify(input))
           tG.GroupEdit = input
           tG.wordMode = vG.wordMode
           break
@@ -329,7 +351,7 @@ let Save: () => string
             item.children.set(tagGroup.key, tagGroup)
           })
         }
-        items.set(item.key, item)
+        items.children.set(item.key, item)
       })
       // console.log(tagsJSON)
       ElMessage({

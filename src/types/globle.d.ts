@@ -11,7 +11,7 @@ interface IS2S {
 }
 // new tag
 interface IInput {
-  inputVisible: boolean
+  editing: boolean
   inputValue: string
 }
 
@@ -56,3 +56,6 @@ interface IItem extends IBase, ISaveItem {
 }
 //  tag表集合
 type TItem = Map<TBaseMapKey, IItem>
+interface DataMain {
+  children: TItem
+}

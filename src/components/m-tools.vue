@@ -28,10 +28,10 @@
               </svg>
             </el-button>
           </el-tooltip>
-          <el-tooltip effect="dark" :content="btnTips.delete" placement="top">
+          <el-tooltip effect="dark" :content="btnTips.del" placement="top">
             <el-button type="danger" :icon="Delete" circle />
           </el-tooltip>
-          <el-tooltip effect="dark" :content="btnTips.edit" placement="top">
+          <el-tooltip effect="dark" :content="btnTips.setting" placement="top">
             <el-button type="info" :icon="Setting" circle />
           </el-tooltip>
           <el-switch v-model="header" inline-prompt active-text="标题栏" inactive-text="标题栏"/>
@@ -49,8 +49,8 @@ import { watch, ref } from 'vue'
 const btnTips = {
   open: '打开模板',
   save: '保存模板',
-  edit: '修改模板',
-  delete: '删除模板'
+  del: '删除模板',
+  setting: '设置'
 }
 
 const header = ref(true)

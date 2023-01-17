@@ -27,7 +27,7 @@
           type="primary"
           @click.stop="itemStateChange" >
           <el-icon
-            @click.stop="showInputTag(item)"
+            @click.stop="InputFocus(item)"
             v-show="props.sw.edit.active && !props.item.editing"
             size="small">
             <Edit />
@@ -89,7 +89,7 @@
                         @dragend="Drag($event, scope.row, item,dragIndex.tagGroup)"
                         @change="tagToggle(scope.row)">
             <el-icon
-              @click.stop="showInputTag(scope.row)"
+              @click.stop="InputFocus(scope.row)"
               v-show="!scope.row.editing && props.sw.edit.active"
               size="small"
               style="margin-right: 5px" >
@@ -99,7 +99,6 @@
               v-if="scope.row.editing"
               v-model="scope.row.name"
               ref="InputRefGroup"
-              @input="autoInputLength(scope.row.name)"
               @keyup.enter="InputEditing(scope.row)"
               @blur="InputEditing(scope.row)"
               @click.stop/>
@@ -147,7 +146,7 @@
                 v-for="i in scope.row.children.values()" :key="i.key"
                 :style="WeightColor(i, scope.row.active, item.active)"
                 :checked="i.active && scope.row.active && props.item.active"
-                v-show="!scope.row.GroupEdit.inputVisible"
+                v-show="!scope.row.GroupEdit.editing"
                 :draggable="sw.drag.active"
                 @dragenter="Drag($event,  i, scope.row, dragIndex.tag)"
                 @dragleave="Drag($event,  i, scope.row, dragIndex.tag)"
@@ -155,7 +154,7 @@
                 @dragend="Drag($event,  i, scope.row, dragIndex.tag)"
                 @change="tagToggle(i)">
                 <el-tag @close="tagClose(scope.row.children, i)"  closable>
-                  <el-icon v-show="!i.editing" size="small"  @click.stop="showInputTag(i)">
+                  <el-icon v-show="!i.editing" size="small"  @click.stop="InputFocus(i)">
                     <Edit />
                   </el-icon>
                   <el-input
@@ -193,43 +192,42 @@
               </el-check-tag>
               <!--     新标签       -->
               <el-input
-                v-if="scope.row.newTag.inputVisible"
+                v-if="scope.row.newTag.editing"
                 ref="InputRefNew"
                 v-model="scope.row.newTag.inputValue"
                 @keyup.enter="InputConfirm(scope.row)"
                 @blur="InputConfirm(scope.row)"/>
-              <el-button v-else size="small" @click="showInputNew(scope.row.newTag)">
+              <el-button v-else v-show="!scope.row.GroupEdit.editing" size="small"
+                         @click="InputFocus(scope.row.newTag)">
                 + New Tag
               </el-button>
-              <!--     组编辑       -->
-              <!--            <el-input-->
-              <!--              ref="InputRefNew"-->
-              <!--              v-model="scope.row.GroupEdit.inputValue"-->
-              <!--              @keyup.enter="InputGroupEditing(scope.row)"-->
-              <!--              @blur="InputGroupEditing(scope.row)"-->
-              <!--              type="textarea"-->
-              <!--              autosize-->
-              <!--            />-->
-              <!--            <el-button-->
-              <!--              @click="showInputGroupEdit(scope.row.GroupEdit)"-->
-              <!--              v-show="props.sw.edit.active"-->
-              <!--              :icon="Edit"-->
-              <!--              size="small"-->
-              <!--              circle />-->
             </el-col>
+<!--             整组修改     -->
+            <el-input
+              v-if="scope.row.GroupEdit.editing"
+              v-model="scope.row.GroupEdit.inputValue"
+              ref="InputRefGroupEdit"
+              :autosize="{ minRows: 6 }"
+              type="textarea"
+              style="padding: 5px"
+              @keyup.enter="saveEditGroup(scope.row)"
+              @blur="saveEditGroup(scope.row)"
+              @click.stop/>
+            <el-button v-else size="small" style="float: right;margin: 5px 10px" :icon="Edit"
+                       @click.stop="showInputGroup(scope.row)" circle />
           </el-scrollbar>
         </template>
       </el-table-column>
     </el-table>
     <el-row class="add">
       <el-input
-        v-if="inputGroup.inputVisible"
+        v-if="inputGroup.editing"
         ref="InputRefNew"
         v-model="inputGroup.inputValue"
         @keyup.enter="InputConfirmGroup(inputGroup)"
         @blur="InputConfirmGroup(inputGroup)"
       />
-      <span v-else @click="showInputNew(inputGroup)">
+      <span v-else @click="InputFocus(inputGroup)">
         + 新的分组
       </span>
     </el-row>
@@ -249,6 +247,7 @@ const StyleInput = {
   width: '80px',
   marginLeft: '5px'
 }
+const sym = [' ', ',']
 // 权重变色
 const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undefined) => {
   if (typeof vup === 'undefined') vup = true
@@ -286,7 +285,7 @@ const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undef
   return style
 }
 
-// todo: 跨组拖动
+// todo: 跨组拖动，组编辑
 let Drag: (e: DragEvent, i: IBase, parents: ITagGroup, pathIndex: number) => void
 const dragIndex = {
   tag: 31,
@@ -371,23 +370,140 @@ const itemDelete = () => {
   emit('itemDelete', props.item.key)
 }
 
-// tag 相关
 const InputRefTag = ref<InstanceType<typeof ElInput>>()
+const InputRefGroup = ref<InstanceType<typeof ElInput>>()
+const InputRefItem = ref<InstanceType<typeof ElInput>>()
+const InputRefNew = ref<InstanceType<typeof ElInput>>()
+const InputRefGroupEdit = ref<InstanceType<typeof ElInput>>()
+
+// 反转
+const tagToggle = (tag: IBase) => {
+  tag.active = !tag.active
+}
 // tag 删除
 const tagClose = (tagGroup: TTagGroups, tag: IBase) => {
   tagGroup.delete(tag.key)
 }
-// tagGroup 相关
-const InputRefGroup = ref<InstanceType<typeof ElInput>>()
+
 // tagGroup 输入
 const inputGroup: IInput = reactive({
-  inputVisible: false,
+  editing: false,
   inputValue: ''
 })
 // tagGroup 删除
 const tagGroupDelete = (i: ITagGroup) => {
   item.value.children.delete(i.key)
 }
+
+// 三种tag 通用 编辑保存
+const InputEditing = (v: IBase, parent?: TTagGroups) => {
+  v.name = v.name.trim()
+  if (v.name === '' && typeof parent !== 'undefined') {
+    tagClose(parent, v)
+  }
+  v.editing = false
+}
+
+// 打开输入栏并自动聚焦
+const InputFocus = (v: IBase | IInput) => {
+  v.editing = true
+  console.log(v)
+  nextTick(() => {
+    try {
+      InputRefNew.value?.input?.focus()
+      InputRefItem.value?.input?.focus()
+      InputRefGroup.value?.input?.focus()
+      InputRefTag.value?.input?.focus()
+      InputRefGroupEdit.value?.textarea?.focus()
+      toRaw(InputRefItem.value)?.input.focus()
+      toRaw(InputRefTag.value)[0].input.focus()
+    } catch (e) {
+      console.log(e)
+    }
+  })
+}
+// 保存输入
+const InputConfirm = (v: ITagGroup) => {
+  if (v.newTag.inputValue) {
+    const value = v.newTag.inputValue.trim()
+    const s = v.wordMode ? sym[0] : sym[1]
+    value.split(s).forEach(value1 => {
+      const v1 = value1.trim()
+      const v2 = v.wordMode ? v1 + (Math.random() * (10 ^ 5)).toString() : v1
+      const n = {
+        key: v2,
+        name: v1,
+        editing: false,
+        active: true
+      }
+      if (v1.length > 0) {
+        v.children.set(v2, n)
+      }
+    })
+  }
+  v.newTag.editing = false
+  v.newTag.inputValue = ''
+}
+// 保存新组
+const InputConfirmGroup = (v: IInput) => {
+  if (v.inputValue) {
+    const v1 = v.inputValue.trim()
+    const v2 = v1 + (Math.random() * (10 ^ 5)).toFixed(0).toString()
+    const n: ITagGroup = {
+      key: v2,
+      name: v1,
+      editing: false,
+      active: true,
+      children: new Map(),
+      newTag: {
+        editing: false,
+        inputValue: ''
+      },
+      GroupEdit: {
+        editing: false,
+        inputValue: ''
+      }
+    }
+    item.value.children.set(v2, n)
+  }
+  v.editing = false
+  v.inputValue = ''
+}
+
+// 打开整组编辑
+const showInputGroup = (v: ITagGroup) => {
+  const s = v.wordMode ? sym[0] : sym[1]
+  v.GroupEdit.inputValue = getGroupTags(v).join(s)
+  InputFocus(v.GroupEdit)
+}
+// 保存整组编辑
+const saveEditGroup = (v: ITagGroup) => {
+  v.GroupEdit.editing = false
+  v.children.clear()
+  v.newTag.inputValue = v.GroupEdit.inputValue
+  InputConfirm(v)
+}
+
+// 提取小组的所有tag
+const getGroupTags = (i: ITagGroup): string[] => {
+  return Array.from(i.children).filter(v => {
+    return v[1].active
+  }).map(value => {
+    return value[1].name
+  })
+}
+// 右键复制
+const contextMenuCopy = (i: ITagGroup) => {
+  const tags = getGroupTags(i)
+  const s = i.wordMode ? sym[0] : sym[1]
+  const { toClipboard } = useClipboard()
+  toClipboard(tags.join(s))
+  ElMessage({
+    message: `${i.name} 复制成功：\n${tags.join(s)}`,
+    type: 'success'
+  })
+}
+
 // tag组模式改变，标签模式和组词模式
 const modeChange = (i: ITagGroup) => {
   let msg = `${i.name}组描述语句模式 `
@@ -401,112 +517,6 @@ const modeChange = (i: ITagGroup) => {
   ElMessage({
     message: msg,
     type: 'info'
-  })
-}
-// item 相关
-const InputRefItem = ref<InstanceType<typeof ElInput>>()
-// ************************* 其他或通用
-const InputRefNew = ref<InstanceType<typeof ElInput>>()
-// 反转
-const tagToggle = (tag: IBase) => {
-  tag.active = !tag.active
-}
-
-// 编辑
-const InputEditing = (v: IBase, parent?: TTagGroups) => {
-  v.name = v.name.trim()
-  if (v.name === '' && typeof parent !== 'undefined') {
-    tagClose(parent, v)
-  }
-  v.editing = false
-}
-// // tagGroup 中所有 tag 编辑
-// const InputGroupEditing = (v: IBase) => {
-//   v.name = v.name.trim()
-//   v.editing = false
-// }
-// todo 计划合并
-// todo: 修改判断方案
-// todo: 当输入为空时删除标签或取消编辑
-// 新建tag
-const showInputNew = (v: IInput) => {
-  v.inputVisible = true
-  nextTick(() => {
-    InputRefNew.value?.input?.focus()
-  })
-}
-const showInputTag = (v: IBase) => {
-  v.editing = true
-  nextTick(() => {
-    try {
-      toRaw(InputRefItem.value)?.input.focus()
-      InputRefItem.value?.input?.focus()
-      InputRefGroup.value?.input?.focus()
-      InputRefTag.value?.input?.focus()
-      toRaw(InputRefTag.value)[0].input.focus()
-    } catch (e) {
-      console.log(e)
-    }
-  })
-}
-// 保存输入
-const InputConfirm = (v: ITagGroup) => {
-  if (v.newTag.inputValue) {
-    const value = v.newTag.inputValue.trim()
-    const s = v.wordMode ? ' ' : ','
-    value.split(s).forEach(value1 => {
-      const v1 = value1.trim()
-      // const v2 = v1 + (Math.random() * 100).toString()
-      const n = {
-        key: v1,
-        name: v1,
-        editing: false,
-        active: true
-      }
-      if (v1.length > 0) {
-        v.children.set(v1, n)
-      }
-    })
-  }
-  v.newTag.inputVisible = false
-  v.newTag.inputValue = ''
-}
-const InputConfirmGroup = (v: IInput) => {
-  if (v.inputValue) {
-    const v1 = v.inputValue.trim()
-    const v2 = v1 + (Math.random() * 1000).toFixed(0).toString()
-    const n: ITagGroup = {
-      key: v2,
-      name: v1,
-      editing: false,
-      active: true,
-      children: new Map(),
-      newTag: {
-        inputVisible: false,
-        inputValue: ''
-      },
-      GroupEdit: {
-        inputVisible: false,
-        inputValue: ''
-      }
-    }
-    item.value.children.set(v2, n)
-  }
-  v.inputVisible = false
-  v.inputValue = ''
-}
-
-const contextMenuCopy = (i: ITagGroup) => {
-  const tags = Array.from(i.children).filter(v => {
-    return v[1].active
-  }).map(value => {
-    return value[1].name
-  })
-  const { toClipboard } = useClipboard()
-  toClipboard(tags.toString())
-  ElMessage({
-    message: `${i.name} 复制成功：\n${tags.toString()}`,
-    type: 'success'
   })
 }
 
@@ -531,13 +541,6 @@ const contextMenuCopy = (i: ITagGroup) => {
   }
   .el-collapse-item__header {
     height: var(--card-body-item-heigh);
-    //.el-check-tag{
-    //  background: var(--el-color-danger);
-    //  color: white;
-    //}
-    //.el-check-tag.is-checked  {
-    //  background: var(--el-color-primary);
-    //}
   }
   .el-collapse-item__content {
     padding: 0;
@@ -574,7 +577,7 @@ const contextMenuCopy = (i: ITagGroup) => {
     }
   }
   .el-check-tag.is-checked {
-    display: inline-block !important;
+    display: inline-block;
     .el-tag {
       color: @on;
       .el-icon.el-tag__close {
@@ -593,57 +596,4 @@ const contextMenuCopy = (i: ITagGroup) => {
 .dragging {
   background: aqua !important;
 }
-//.one-animal {
-//  transition: all .1s !important;
-//}
-//.el-check-tag {
-//  .one-animal();
-//  background: var(--el-color-danger-light-8);
-//  color: var(--el-color-danger);
-//  .el-tag,.el-icon.el-tag__close {
-//    color: var(--el-color-danger);
-//  }
-//  .el-icon:hover {
-//    background: rgba(255, 255, 255, 0.42);
-//  }
-//  .el-tag {
-//    .one-animal();
-//    .el-tag__content {
-//      .one-animal();
-//    }
-//  }
-//}
-//.el-check-tag.is-checked {
-//  background: var(--el-color-primary-light-8);
-//  color: var(--el-color-primary);
-//  .el-tag,.el-icon {
-//    color: var(--el-color-primary);
-//  }
-//}
-//
-//.el-check-tag:hover {
-//  background: var(--el-color-danger);
-//}
-//.el-check-tag.is-checked:hover {
-//  background: var(--el-color-primary);
-//}
-//.el-check-tag:active {
-//  background: var(--el-color-danger-dark-2);
-//}
-//.el-check-tag.is-checked:active {
-//  background: var(--el-color-primary-dark-2);
-//}
-//.el-check-tag:hover,.el-check-tag.is-checked:hover {
-//  color: white;
-//  .el-tag,.el-icon {
-//    color: white;
-//  }
-//}
-//
-//.el-check-tag.tag-group{
-//  border: 1px solid var(--el-color-danger-light-5);
-//}
-//.el-check-tag.is-checked.tag-group  {
-//  border: 1px solid var(--el-color-primary-light-5);
-//}
 </style>
