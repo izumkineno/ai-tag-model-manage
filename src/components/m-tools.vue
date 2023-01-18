@@ -53,6 +53,7 @@ const btnTips = {
   setting: '设置'
 }
 
+// 隐藏标题栏
 const header = ref(true)
 watch(header, (n) => {
   const h = document.documentElement.style.getPropertyValue('--header-heigh-bck')
@@ -60,6 +61,55 @@ watch(header, (n) => {
   document.documentElement.style.setProperty('--header-heigh', headerStyle.heigh)
   document.documentElement.style.setProperty('--header-opacity', headerStyle.opacity)
 })
+
+// 保存模板
+// const modelSave = () => {
+//   const t: IModelSaveItem[] = []
+//   const template = (v: IModelSaveBase | IModelSaveTagGroup | IModelSaveItem,
+//                     v2?: IModelSaveBase[] | IModelSaveTagGroup[]) => {
+//     const temp: IModelSaveBase | IModelSaveTagGroup | IModelSaveItem = {
+//       key: v.key,
+//       active: v.active
+//       // weight: v.weight,
+//       // weightNu: v.weightNu
+//     }
+//     // 检查权重
+//     if (typeof v.weight === 'undefined') {
+//       temp.weightNu = v.weightNu
+//     } else {
+//       v.weight.toString() === '0' ? temp.weightNu = v.weightNu : temp.weight = v.weight
+//     }
+//     // 作为tagGroup检查属性
+//     const tempG = temp as ISaveTagGroup
+//     const vG = v as ISaveTagGroup
+//     const v2G = v2 as ISaveBase[]
+//     if (typeof v2G !== 'undefined') {
+//       tempG.children = v2G
+//     }
+//     if (typeof vG.wordMode !== 'undefined') {
+//       tempG.wordMode = vG.wordMode
+//     }
+//     // 作为tagItem检查属性
+//     const tempI = temp as IModelSaveItem
+//     const v2I = v2 as ISaveTagGroup[]
+//     if (typeof v2I !== 'undefined') {
+//       tempI.children = v2I
+//     }
+//     return temp
+//   }
+//   items.children.forEach(v3 => {
+//     const t1: ISaveTagGroup[] = []
+//     v3.children.forEach(v2 => {
+//       const t2: ISaveBase[] = []
+//       v2.children.forEach(v => {
+//         t2.push(template(v))
+//       })
+//       t1.push(template(v2, t2))
+//     })
+//     t.push(template(v3, t1))
+//   })
+//   return JSON.stringify(t)
+// }
 
 </script>
 
