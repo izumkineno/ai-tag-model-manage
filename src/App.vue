@@ -2,7 +2,10 @@
     <div class="top">
       <h2 class="title">{{ main.title }}</h2>
       <h3 class="title">{{ main.subhead }}</h3>
-      <div>{{ main.linkText }}</div>
+      <div>
+        <el-link :href="main.tag.url" target="_blank" type="success">{{ main.tag.name }}</el-link>
+        <span style="margin-left: 10px">{{ main.linkText }}</span>
+      </div>
       <a :href="main.github" class="github-corner" target="_blank" title="Follow me on GitHub" aria-label="Follow me on GitHub">
         <svg width="80" height="80" viewBox="0 0 250 250" style="fill:var(--el-color-primary); color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true">
           <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
@@ -22,12 +25,15 @@
 <script setup lang="ts">
 import Model from '@/components/m-model.vue'
 import Tools from '@/components/m-tools.vue'
-import { onMounted } from 'vue'
-const main: IS2S = {
+const main = {
   title: '炼金桌',
   subhead: 'AI绘画tag模板管理器',
   linkText: '词典推荐',
-  github: 'https://github.com/izumkineno/ai-tag-model-manage'
+  github: 'https://github.com/izumkineno/ai-tag-model-manage',
+  tag: {
+    name: 'tag串编写指南',
+    url: 'https://www.bilibili.com/read/cv19513926'
+  }
 }
 interface IUrl {
   name: string

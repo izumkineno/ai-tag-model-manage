@@ -17,19 +17,30 @@ interface IInput {
 
 type TBaseMapKey = string
 
-//  tag和组以及表的基础保存属性
-interface ISaveBase {
+// tag模板格式
+interface IModelSaveBase {
   readonly key: TBaseMapKey
-  name: string
   active: boolean
   weight?: number
   weightNu?: number
-  weightColor?: string
+}
+// group模板格式
+interface IModelSaveTagGroup extends IModelSaveBase{
+  children?: IModelSaveBase[]
+  wordMode?: boolean
+}
+// item模板格式
+interface IModelSaveItem extends IModelSaveBase {
+  children?: IModelSaveTagGroup[]
+}
+
+//  tag和组以及表的基础保存属性
+interface ISaveBase extends IModelSaveBase{
+  name: string
 }
 //  tag组的保存属性
-interface ISaveTagGroup extends ISaveBase{
+interface ISaveTagGroup extends ISaveBase, IModelSaveTagGroup{
   children?: ISaveBase[]
-  wordMode?: boolean
 }
 //  tag表保存属性
 interface ISaveItem extends ISaveBase {
@@ -56,6 +67,21 @@ interface IItem extends IBase, ISaveItem {
 }
 //  tag表集合
 type TItem = Map<TBaseMapKey, IItem>
-interface DataMain {
+
+type TTagType = 'tag'| 'tagGroup' | 'item'
+
+interface IDataMain {
   children: TItem
+  inputItemAdd: ''
+  sw: ISwitch
+  lastSave: ISaveItem[]
+  drag: {
+    key?: string,
+    index?: number,
+    lastKey?: string,
+    lastTag?: HTMLSpanElement
+    lastParent?: IItem | ITagGroup | IDataMain
+  }
+  dragIndex: Map<TTagType, number>
 }
+type TParent = IItem | ITagGroup | IDataMain

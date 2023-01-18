@@ -1,12 +1,17 @@
 <template>
-  <el-collapse-item :name="props.colName" >
+  <el-collapse-item :name="props.colName"
+                    :draggable="main.sw.drag.active"
+                    @dragenter="main.Drag($event,  item, main, 'item')"
+                    @dragleave="main.Drag($event,  item, main, 'item')"
+                    @dragstart="main.Drag($event,  item, main, 'item')"
+                    @dragend="main.Drag($event,  item, main, 'item')">
     <!--  头  -->
     <template #title>
       <el-space wrap>
 <!--     删除确认     -->
         <el-popconfirm
           :title="`确定删除 ${props.item.name} ？`"
-          @confirm="itemDelete"
+          @confirm="main.Delete(item.key)"
           confirm-button-text="确定"
           cancel-button-text="取消">
           <template #reference>
@@ -25,7 +30,7 @@
           :style="WeightColor(item)"
           :checked="props.item.active"
           type="primary"
-          @click.stop="itemStateChange" >
+          @click.stop="main.StateToggle(item.key)" >
           <el-icon
             @click.stop="InputFocus(item)"
             v-show="props.sw.edit.active && !props.item.editing"
@@ -36,7 +41,6 @@
             v-show="props.item.editing"
             ref="InputRefItem"
             v-model="item.name"
-            @input="autoInputLength(item.name)"
             @keyup.enter="InputEditing(item)"
             @blur="InputEditing(item)"
             @click.stop
@@ -65,7 +69,7 @@
       </el-space>
     </template>
     <!--  主体  -->
-    <el-table :data="Array.from(item.children.values())" style="width: 100%">
+    <el-table @dragenter.stop :data="Array.from(item.children.values())" style="width: 100%">
       <el-table-column type="index" />
       <el-table-column label="组名" width="200">
         <template #default="scope">
@@ -83,10 +87,10 @@
                         :checked="scope.row.active && props.item.active"
                         :draggable="sw.drag.active"
                         @contextmenu.prevent.stop="contextMenuCopy(scope.row)"
-                        @dragenter="Drag($event, scope.row, item, dragIndex.tagGroup)"
-                        @dragleave="Drag($event, scope.row, item, dragIndex.tagGroup)"
-                        @dragstart="Drag($event, scope.row, item, dragIndex.tagGroup)"
-                        @dragend="Drag($event, scope.row, item,dragIndex.tagGroup)"
+                        @dragenter.stop="main.Drag($event, scope.row, item, 'tagGroup')"
+                        @dragleave.stop="main.Drag($event, scope.row, item, 'tagGroup')"
+                        @dragstart.stop="main.Drag($event, scope.row, item, 'tagGroup')"
+                        @dragend.stop="main.Drag($event, scope.row, item,'tagGroup')"
                         @change="tagToggle(scope.row)">
             <el-icon
               @click.stop="InputFocus(scope.row)"
@@ -148,10 +152,10 @@
                 :checked="i.active && scope.row.active && props.item.active"
                 v-show="!scope.row.GroupEdit.editing"
                 :draggable="sw.drag.active"
-                @dragenter="Drag($event,  i, scope.row, dragIndex.tag)"
-                @dragleave="Drag($event,  i, scope.row, dragIndex.tag)"
-                @dragstart="Drag($event,  i, scope.row, dragIndex.tag)"
-                @dragend="Drag($event,  i, scope.row, dragIndex.tag)"
+                @dragenter.stop="main.Drag($event,  i, scope.row, 'tag')"
+                @dragleave.stop="main.Drag($event,  i, scope.row, 'tag')"
+                @dragstart.stop="main.Drag($event,  i, scope.row, 'tag')"
+                @dragend.stop="main.Drag($event,  i, scope.row, 'tag')"
                 @change="tagToggle(i)">
                 <el-tag @close="tagClose(scope.row.children, i)"  closable>
                   <el-icon v-show="!i.editing" size="small"  @click.stop="InputFocus(i)">
@@ -236,17 +240,35 @@
 
 <script setup lang='ts'>
 import { Close, Edit, Switch } from '@element-plus/icons-vue'
-import { reactive, ref, nextTick, defineProps, defineEmits, toRaw, computed } from 'vue'
+import { reactive, ref, nextTick, defineProps, toRaw, computed } from 'vue'
 import { ElInput, ElMessage } from 'element-plus'
 import useClipboard from 'vue-clipboard3'
+import { mainStore } from '@/store/main_store'
 
 // todo: 建立可编辑和删除tag组件
-// todo: 修复文件以符合ts规范
 // todo: 合并冗余，优化代码（所有功能实现后）
+
+// 表格标识符和各种状态
+const props = defineProps<{
+  colName: string
+  item: IItem
+  sw: ISwitch
+}>()
+// item 双向绑定
+const item = computed({
+  get: () => reactive(props.item),
+  set: v => {
+    main.Change([props.item.key, v])
+  }
+})
+
+const main = mainStore()
+// 权重数字输入css
 const StyleInput = {
   width: '80px',
   marginLeft: '5px'
 }
+// 分隔
 const sym = [' ', ',']
 // 权重变色
 const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undefined) => {
@@ -285,98 +307,13 @@ const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undef
   return style
 }
 
-// todo: 跨组拖动，组编辑
-let Drag: (e: DragEvent, i: IBase, parents: ITagGroup, pathIndex: number) => void
-const dragIndex = {
-  tag: 31,
-  tagGroup: 27
-}
-{
-  let key: string
-  let lastKey: string
-  let lastTag: any
-  Drag = (e: DragEvent, i: IBase, parents: ITagGroup, pathIndex: number) => {
-    // console.log(e.type, e, i.key)
-    const path = e.path
-    // // 主框位置
-    // tag 拖拽
-    const TagDrag = () => {
-      // 转换组的key，用于定位和修改
-      const keys = Array.from(parents.children.keys())
-      let index = keys.indexOf(key)
-      // 转换组
-      const t = Array.from(parents.children)
-      const tag = parents.children.get(key)
-      // 判断当前组中是否有目标的tag
-      if (parents.children.has(lastKey)) {
-        let indexTarget = keys.indexOf(lastKey)
-        // console.log(index, indexTarget)
-        index > indexTarget ? index++ : indexTarget++
-        t.splice(indexTarget, 0, [tag!.key, tag])
-        t.splice(index, 1)
-        // console.log(tag, t)
-        parents.children = new Map(t)
-      }
-    }
-    switch (e.type) {
-      case 'dragstart':
-        key = i.key
-        lastKey = ''
-        break
-      case 'dragenter':
-        if (path.length >= pathIndex) {
-          if (i.key !== key) {
-            path[path.length - pathIndex].style.background = 'rgba(0,0,0,0.3)'
-          }
-          if (path[path.length - pathIndex] !== lastTag) {
-            lastTag.style.background = ''
-          }
-        }
-        break
-      case 'dragleave':
-        lastKey = i.key
-        lastTag = path[path.length - pathIndex]
-        break
-      case 'dragend':
-        lastTag.style.background = ''
-        // console.log(key, lastKey, lastTag)
-        TagDrag()
-        break
-    }
-  }
-}
-
-// 表格标识符和各种状态
-const props = defineProps<{
-  colName: string
-  item: IItem
-  sw: ISwitch
-}>()
-// item 双向绑定
-const item = computed({
-  get: () => reactive(props.item),
-  set: v => {
-    emit('itemChange', [props.item.key, v])
-  }
-})
-// 传给父组件的 事件
-const emit = defineEmits(['itemState', 'itemDelete', 'itemChange'])
-// 状态改变 开/关
-const itemStateChange = () => {
-  emit('itemState', props.item.key)
-}
-// 删除item
-const itemDelete = () => {
-  emit('itemDelete', props.item.key)
-}
-
 const InputRefTag = ref<InstanceType<typeof ElInput>>()
 const InputRefGroup = ref<InstanceType<typeof ElInput>>()
 const InputRefItem = ref<InstanceType<typeof ElInput>>()
 const InputRefNew = ref<InstanceType<typeof ElInput>>()
 const InputRefGroupEdit = ref<InstanceType<typeof ElInput>>()
 
-// 反转
+// tag 反转
 const tagToggle = (tag: IBase) => {
   tag.active = !tag.active
 }
@@ -404,7 +341,7 @@ const InputEditing = (v: IBase, parent?: TTagGroups) => {
   v.editing = false
 }
 
-// 打开输入栏并自动聚焦
+// 输入栏自动聚焦
 const InputFocus = (v: IBase | IInput) => {
   v.editing = true
   console.log(v)
@@ -415,13 +352,14 @@ const InputFocus = (v: IBase | IInput) => {
       InputRefGroup.value?.input?.focus()
       InputRefTag.value?.input?.focus()
       InputRefGroupEdit.value?.textarea?.focus()
-      toRaw(InputRefItem.value)?.input.focus()
-      toRaw(InputRefTag.value)[0].input.focus()
+      toRaw(InputRefItem.value)?.input?.focus()
+      toRaw(InputRefTag.value)[0]?.input?.focus()
     } catch (e) {
       console.log(e)
     }
   })
 }
+// todo: 待合并
 // 保存输入
 const InputConfirm = (v: ITagGroup) => {
   if (v.newTag.inputValue) {
@@ -470,6 +408,14 @@ const InputConfirmGroup = (v: IInput) => {
   v.inputValue = ''
 }
 
+// 提取小组的所有tag
+const getGroupTags = (i: ITagGroup): string[] => {
+  return Array.from(i.children).filter(v => {
+    return v[1].active
+  }).map(value => {
+    return value[1].name
+  })
+}
 // 打开整组编辑
 const showInputGroup = (v: ITagGroup) => {
   const s = v.wordMode ? sym[0] : sym[1]
@@ -483,16 +429,7 @@ const saveEditGroup = (v: ITagGroup) => {
   v.newTag.inputValue = v.GroupEdit.inputValue
   InputConfirm(v)
 }
-
-// 提取小组的所有tag
-const getGroupTags = (i: ITagGroup): string[] => {
-  return Array.from(i.children).filter(v => {
-    return v[1].active
-  }).map(value => {
-    return value[1].name
-  })
-}
-// 右键复制
+// 右键复制小组
 const contextMenuCopy = (i: ITagGroup) => {
   const tags = getGroupTags(i)
   const s = i.wordMode ? sym[0] : sym[1]
