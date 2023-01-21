@@ -144,6 +144,13 @@ export const mainStore = defineStore('main', {
         })
         tags.length = 0
       })
+      try {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        document.querySelector('body > gradio-app').shadowRoot.querySelector('#txt2img_prompt > label > textarea').value = tags.join()
+      } catch (e) {
+        console.log(e)
+      }
     },
     Save(): string {
       this.lastSave = []
