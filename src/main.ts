@@ -5,14 +5,11 @@ import { createPinia } from 'pinia'
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-const target = document.querySelector('body > gradio-app').shadowRoot.getElementById('toprow') as HTMLElement
-const container = document.createElement('div')
-container.id = 'app'
-target.insertBefore(container, target.nextElementSibling)
+const target = document.querySelector('body > gradio-app').shadowRoot.querySelector('#app') as HTMLElement
 createApp(App)
   .use(createPinia())
-  .mount(container)
+  .mount(target)
 
 // createApp(App)
 //   .use(createPinia())
-//   .mount('#toprow')
+//   .mount('#app')
