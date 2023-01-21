@@ -94,7 +94,7 @@ html {
   transition: all .3s;
 }
 
-#toprow {
+#app {
   height: 100vh;
   min-width: var(--min-width);
   min-height: var(--min-heigh);
