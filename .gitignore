@@ -19,4 +19,4 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
-/dist/
+/dist/*

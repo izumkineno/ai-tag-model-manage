@@ -10,6 +10,11 @@ export const mainStore = defineStore('main', {
       children: new Map(),
       inputItemAdd: '',
       sw: {
+        weightSym: {
+          name: '权重 - [ ]',
+          name2: '权重 - { }',
+          active: false
+        },
         del: {
           name: '删除',
           active: false
@@ -20,10 +25,6 @@ export const mainStore = defineStore('main', {
         },
         weight: {
           name: '权重',
-          active: false
-        },
-        weightSym: {
-          name: '权重 - { } ',
           active: false
         },
         weightNu: {
@@ -85,8 +86,6 @@ export const mainStore = defineStore('main', {
       })
       // 输出tag集合
       const tags: string[] = []
-      // 粘贴板
-      const { toClipboard } = useClipboard()
       // 扫描后的处理函数
       const tagDispose = (v: IBase, t: string[]) => {
         let name
@@ -114,49 +113,72 @@ export const mainStore = defineStore('main', {
       // 扫描所有启用的tag
       this.children.forEach(v2 => {
         if (v2.active && v2.children.size > 0) {
-          // tag 组
-          const t2: string[] = []
-          v2.children.forEach(v1 => {
-            if (v1.active && v1.children.size > 0) {
-              // console.log(v.tags)
-              // tag
-              const t1: string[] = []
-              v1.children.forEach(v => {
-                if (v.active) {
-                  // console.log(v)
-                  tagDispose(v, t1)
+            // tag 组
+            const t2: string[] = []
+            v2.children.forEach(v1 => {
+              if (v1.active && v1.children.size > 0) {
+                // console.log(v.tags)
+                // tag
+                const t1: string[] = []
+                v1.children.forEach(v => {
+                  if (v.active) {
+                    // console.log(v)
+                    tagDispose(v, t1)
+                  }
+                })
+                if (v1.wordMode && t1) {
+                  tagAll(v1, t2, t1.join(' '))
+                } else {
+                  tagAll(v1, t2, t1.join())
                 }
-              })
-              if (v1.wordMode) {
-                tagAll(v1, t2, t1.join(' '))
-              } else {
-                tagAll(v1, t2, t1.join())
               }
-            }
-          })
-          tagAll(v2, tags, t2.join())
-        }
-      })
-      toClipboard(tags.join()).then(() => {
-        ElMessage({
-          message: `复制成功：\n${tags.toString()}`,
-          type: 'success'
-        })
-        tags.length = 0
+            })
+            if (t2) tagAll(v2, tags, t2.join())
+          }
       })
       try {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        document.querySelector('body > gradio-app').shadowRoot.querySelector('#txt2img_prompt > label > textarea').value = tags.join()
+        const cps = gradio_config.components
+        if (cps) {
+          const input: any[] = []
+          cps.forEach((v: any, i: number) => {
+            // console.log(v.type)
+            if (v.type === 'textbox') {
+              // console.log(v.props)
+              const v1 = v.props
+              if (v1.elem_id === 'txt2img_prompt' && v1.label === 'Prompt') {
+                input.push(cps[i])
+              }
+              if (v1.elem_id === 'txt2img_neg_prompt' && v1.label === 'Negative prompt') {
+                input.push(cps[i])
+              }
+            }
+          })
+          console.log(input)
+          input[0].props.value = tags.join()
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          document.querySelector('body > gradio-app').shadowRoot.querySelector('#txt2img_generate').click()
+        }
       } catch (e) {
         console.log(e)
+        // 粘贴板
+        const { toClipboard } = useClipboard()
+        toClipboard(tags.join()).then(() => {
+          ElMessage({
+            message: `复制成功：\n${tags.toString()}`,
+            type: 'success'
+          })
+          tags.length = 0
+        })
       }
     },
     Save(): string {
       this.lastSave = []
       const template = (v: ISaveBase | ISaveTagGroup | ISaveItem,
                         v2?: ISaveBase[] | ISaveTagGroup[]) => {
-        const temp: ISaveBase | ISaveTagGroup | IModelSaveItem = {
+        const temp: ISaveBase | ISaveTagGroup | ISaveItem = {
           key: v.key,
           name: v.name,
           active: v.active
@@ -181,7 +203,7 @@ export const mainStore = defineStore('main', {
           tempG.wordMode = vG.wordMode
         }
         // 作为tagItem检查属性
-        const tempI = temp as IModelSaveItem
+        const tempI = temp as ISaveItem
         const v2I = v2 as ISaveTagGroup[]
         if (typeof v2I !== 'undefined') {
           tempI.children = v2I

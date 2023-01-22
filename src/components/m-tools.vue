@@ -2,7 +2,7 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <el-row>
+        <el-space wrap>
           <el-tooltip effect="dark" :content="btnTips.open" placement="top">
             <el-button type="primary" circle>
               <svg t="1672897028804" class="icon" viewBox="0 0 1024 1024" version="1.1"
@@ -35,7 +35,7 @@
             <el-button type="info" :icon="Setting" circle />
           </el-tooltip>
           <el-switch v-model="header" inline-prompt active-text="标题栏" inactive-text="标题栏"/>
-        </el-row>
+        </el-space>
       </div>
     </template>
     <span style="color: var(--el-color-info-light-3)">开发中...</span>

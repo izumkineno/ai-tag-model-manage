@@ -28,7 +28,7 @@
 <!--    表头    -->
         <el-check-tag
           :style="WeightColor(item)"
-          :checked="props.item.active"
+          :checked="props.item.active "
           type="primary"
           @click.stop="main.StateToggle(item.key)" >
           <el-icon
@@ -71,7 +71,7 @@
     <!--  主体  -->
     <el-table @dragenter.stop :data="Array.from(item.children.values())" style="width: 100%">
       <el-table-column type="index" />
-      <el-table-column label="组名" width="200">
+      <el-table-column label="组名" min-width="1">
         <template #default="scope">
           <!--    tag 组      -->
           <el-button
@@ -84,7 +84,7 @@
             style="margin: 0 5px" />
           <el-check-tag class="tag-group"
                         :style="WeightColor(scope.row, item.active)"
-                        :checked="scope.row.active && props.item.active"
+                        :checked="scope.row.active && props.item.active "
                         :draggable="sw.drag.active"
                         @contextmenu.prevent.stop="contextMenuCopy(scope.row)"
                         @dragenter.stop="main.Drag($event, scope.row, item, 'tagGroup')"
@@ -140,7 +140,7 @@
           </el-check-tag>
         </template>
       </el-table-column>
-      <el-table-column label="tags">
+      <el-table-column label="tags" min-width="5">
         <template #default="scope">
           <!--    标签      -->
           <el-scrollbar wrap-style="height: 99%">
@@ -149,7 +149,7 @@
               <el-check-tag
                 v-for="i in scope.row.children.values()" :key="i.key"
                 :style="WeightColor(i, scope.row.active, item.active)"
-                :checked="i.active && scope.row.active && props.item.active"
+                :checked="i.active && scope.row.active && props.item.active "
                 v-show="!scope.row.GroupEdit.editing"
                 :draggable="sw.drag.active"
                 @dragenter.stop="main.Drag($event,  i, scope.row, 'tag')"
@@ -271,7 +271,7 @@ const StyleInput = {
 // 分隔
 const sym = [' ', ',']
 // 权重变色
-const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undefined) => {
+const WeightColor = (v: ITagGroup, vup?: boolean | undefined, vupp?: boolean | undefined) => {
   if (typeof vup === 'undefined') vup = true
   if (typeof vupp === 'undefined') vupp = true
   let style: IS2S
@@ -304,6 +304,7 @@ const WeightColor = (v: IBase, vup?: boolean | undefined, vupp?: boolean | undef
   } else {
     style = {}
   }
+  if (v.wordMode) style.color = '#ab00ff'
   return style
 }
 
@@ -409,17 +410,23 @@ const InputConfirmGroup = (v: IInput) => {
 }
 
 // 提取小组的所有tag
-const getGroupTags = (i: ITagGroup): string[] => {
-  return Array.from(i.children).filter(v => {
-    return v[1].active
-  }).map(value => {
-    return value[1].name
-  })
+const getGroupTags = (i: ITagGroup, noFilter?: boolean): string[] => {
+  if (noFilter) {
+    return Array.from(i.children).map(value => value[1].name)
+  } else {
+    return Array.from(i.children).filter(v => {
+      return v[1].active
+    }).map(value => {
+      return value[1].name
+    })
+  }
 }
 // 打开整组编辑
 const showInputGroup = (v: ITagGroup) => {
-  const s = v.wordMode ? sym[0] : sym[1]
-  v.GroupEdit.inputValue = getGroupTags(v).join(s)
+  const s = []
+  s[1] = v.wordMode ? sym[0] : sym[1]
+  s[0] = getGroupTags(v, true)
+  v.GroupEdit.inputValue = s[0].join(s[1])
   InputFocus(v.GroupEdit)
 }
 // 保存整组编辑
@@ -467,7 +474,6 @@ const modeChange = (i: ITagGroup) => {
   height: calc(100vh
   - var(--header-heigh)
   - (var(--body-margin-tb)
-  - var(--title-pd)
   - var(--body-item-pd))*2
   - var(--el-card-padding)*8
   );

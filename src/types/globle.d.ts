@@ -2,6 +2,7 @@
 interface ISwitch {
   [propName: string]: {
     name: string,
+    name2?: string,
     active: boolean
   }
 }
@@ -43,7 +44,7 @@ interface ISaveTagGroup extends ISaveBase, IModelSaveTagGroup{
   children?: ISaveBase[]
 }
 //  tag表保存属性
-interface ISaveItem extends ISaveBase {
+interface ISaveItem extends ISaveBase, IModelSaveItem {
   children?: ISaveTagGroup[]
 }
 

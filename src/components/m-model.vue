@@ -7,10 +7,11 @@
             v-for="i in items.sw"
             :key="i.name"
             v-model="i.active"
-            inline-prompt :active-text="i.name"
+            inline-prompt :active-text="i.name2 ? i.name2 : i.name"
+            :style="!i.name2 ? {'--el-switch-on-color': '#13ce66'} : {}"
             :inactive-text="i.name"/>
         </el-space>
-        <el-space>
+        <el-space wrap>
           <el-input v-model="items.inputItemAdd" :placeholder="tips.input" />
           <el-tooltip effect="dark" placement="top" :content="tips.add" >
             <el-button @click="items.Add(items.inputItemAdd)" type="primary" :icon="Plus" circle />
