@@ -5,6 +5,8 @@
 
 [点击使用](https://izumkineno.github.io/ai-tag-model-manage/dist/)
 
+[油猴注入版](https://greasyfork.org/zh-CN/scripts/458675-ai-tag-%E7%BB%98%E7%94%BB%E7%AE%A1%E7%90%86%E5%99%A8-stable-diffusion-%E6%B3%A8%E5%85%A5%E7%89%88)
+
 #### 目前已有功能
 
 - [x] 增删改
