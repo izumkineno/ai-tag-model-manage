@@ -1,4 +1,4 @@
-# AI绘画 tag 管理器
+# AI绘画 tag 管理器（已弃用 [新的](https://github.com/izumkineno/tag-model-manage)）
 ### Vue3 + Element Plus + pinia
 
 ![预览图](MarkdownResource/img.png)
